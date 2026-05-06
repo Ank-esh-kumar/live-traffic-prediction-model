@@ -1,0 +1,44 @@
+[
+  {
+    "timestamp": "2026-05-06T13:05:55.855995",
+    "start": "Kashmiri Gate (Delhi)",
+    "end": "Anand Vihar (Delhi)",
+    "ai_path": [
+      "Kashmiri Gate (Delhi)",
+      "Connaught Place (Delhi)",
+      "Anand Vihar (Delhi)"
+    ],
+    "shortest_path": [
+      "Kashmiri Gate (Delhi)",
+      "Connaught Place (Delhi)",
+      "Anand Vihar (Delhi)"
+    ],
+    "user_chosen": [
+      "Kashmiri Gate (Delhi)",
+      "Connaught Place (Delhi)",
+      "Anand Vihar (Delhi)"
+    ],
+    "choice": "ai"
+  },
+  {
+    "timestamp": "2026-05-06T13:53:50.618768",
+    "start": "Ballupur Chowk (Dehradun)",
+    "end": "Saharanpur Chowk (Dehradun)",
+    "ai_path": [
+      "Ballupur Chowk (Dehradun)",
+      "Bindal Pull (Dehradun)",
+      "Saharanpur Chowk (Dehradun)"
+    ],
+    "shortest_path": [
+      "Ballupur Chowk (Dehradun)",
+      "Bindal Pull (Dehradun)",
+      "Saharanpur Chowk (Dehradun)"
+    ],
+    "user_chosen": [
+      "Ballupur Chowk (Dehradun)",
+      "Bindal Pull (Dehradun)",
+      "Saharanpur Chowk (Dehradun)"
+    ],
+    "choice": "ai"
+  }
+]

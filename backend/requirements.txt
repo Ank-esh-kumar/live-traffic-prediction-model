@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+websockets
+networkx
+scikit-learn
+pandas
+numpy
+python-dotenv
+tensorflow
