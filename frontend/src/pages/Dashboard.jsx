@@ -139,7 +139,7 @@ const Dashboard = () => {
     setFeedbackSent(false);
     setViaRouteInfo(null);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/route/multi`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000`}/api/route/multi`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ waypoints })
@@ -198,7 +198,7 @@ const Dashboard = () => {
   const submitFeedback = async () => {
     if (!selectedChoice || !routeInfo) return;
     try {
-      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/feedback`, {
+      await fetch(`${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000`}/api/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

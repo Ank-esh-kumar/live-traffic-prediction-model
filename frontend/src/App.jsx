@@ -31,6 +31,17 @@ function App() {
           <Dashboard />
         </Suspense>
       </main>
+
+      <footer style={{
+        textAlign: 'center',
+        padding: '2rem 0',
+        marginTop: '2rem',
+        color: 'var(--text-secondary)',
+        fontSize: '0.85rem',
+        borderTop: '1px solid var(--glass-border)'
+      }}>
+        <p>&copy; {new Date().getFullYear()} Ankesh Kumar. All rights reserved.</p>
+      </footer>
     </div>
   )
 }

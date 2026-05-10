@@ -11,7 +11,7 @@ export const useLiveTraffic = () => {
   const isFirstMessageRef = useRef(true);
 
   useEffect(() => {
-    const wsUrl = `${import.meta.env.VITE_WS_URL || 'ws://localhost:8000'}/ws/traffic`;
+    const wsUrl = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname}:8000/ws/traffic`;
     let ws;
     let reconnectTimer;
 
