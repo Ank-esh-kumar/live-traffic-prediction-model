@@ -4,7 +4,7 @@ websockets
 networkx
 scikit-learn
 pandas
-numpy
+numpy<2.0.0
 python-dotenv
-tensorflow
+tensorflow>=2.15.0
 pymongo
