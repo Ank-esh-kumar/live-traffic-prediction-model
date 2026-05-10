@@ -1,21 +1,40 @@
-MIT License
+Custom Attribution License
 
-Copyright (c) 2026 Ankesh kumar
+Copyright (c) 2026 Ankesh Kumar
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. Grant of Permission
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Permission is granted to use, copy, modify, and distribute this repository and
+derivative works only if the attribution requirements in Section 2 are fully
+met.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+2. Required Attribution
+
+Any person or organization that uses, copies, modifies, publishes,
+redistributes, or creates derivative works from this repository must give clear
+and visible credit to the original author:
+
+Ankesh Kumar
+
+The attribution must:
+
+- appear in the source distribution and in any substantial portion of the code;
+- be included in project documentation, README files, about pages, or other
+  reasonable attribution locations for redistributed versions;
+- state that the original work was created by Ankesh Kumar; and
+- not remove or alter existing copyright or attribution notices.
+
+3. Condition of Use
+
+If proper attribution is not given, then no permission is granted to use, copy,
+modify, distribute, sublicense, or create derivative works from this
+repository.
+
+4. No Warranty
+
+THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

@@ -1,12 +1,19 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import List
-import json
-import os
 from datetime import datetime
 
 router = APIRouter()
 
+# Try MongoDB, fall back to JSON file
+try:
+    from database import save_feedback, get_feedback_count
+    MONGO_AVAILABLE = True
+except ImportError:
+    MONGO_AVAILABLE = False
+
+import json
+import os
 FEEDBACK_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "route_feedback.json")
 
 class RouteFeedback(BaseModel):
@@ -21,9 +28,8 @@ class RouteFeedback(BaseModel):
 def submit_feedback(feedback: RouteFeedback):
     """
     Stores the user's route preference for future model training.
+    Uses MongoDB if available, falls back to JSON file.
     """
-    os.makedirs(os.path.dirname(FEEDBACK_FILE), exist_ok=True)
-    
     entry = {
         "timestamp": datetime.now().isoformat(),
         "start": feedback.start_node,
@@ -34,7 +40,16 @@ def submit_feedback(feedback: RouteFeedback):
         "choice": feedback.choice
     }
     
-    # Append to existing feedback file
+    if MONGO_AVAILABLE:
+        try:
+            save_feedback(entry)
+            total = get_feedback_count()
+            return {"message": "Feedback recorded to database", "total_feedback": total}
+        except Exception as e:
+            print(f"MongoDB feedback save failed, falling back to JSON: {e}")
+    
+    # Fallback: JSON file
+    os.makedirs(os.path.dirname(FEEDBACK_FILE), exist_ok=True)
     existing = []
     if os.path.exists(FEEDBACK_FILE):
         try:

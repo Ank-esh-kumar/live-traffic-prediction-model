@@ -40,5 +40,50 @@
       "Saharanpur Chowk (Dehradun)"
     ],
     "choice": "ai"
+  },
+  {
+    "timestamp": "2026-05-07T16:52:24.727548",
+    "start": "Prem Nagar (Dehradun)",
+    "end": "Laxman Jhula (Rishikesh)",
+    "ai_path": [
+      "Prem Nagar (Dehradun)",
+      "Vasant Vihar (Dehradun)",
+      "Ballupur Chowk (Dehradun)",
+      "Bindal Pull (Dehradun)",
+      "Clock Tower (Dehradun)",
+      "Dalanwala (Dehradun)",
+      "Rispana Pull (Dehradun)",
+      "Jogiwala (Dehradun)",
+      "Triveni Ghat (Rishikesh)",
+      "Ram Jhula (Rishikesh)",
+      "Laxman Jhula (Rishikesh)"
+    ],
+    "shortest_path": [
+      "Prem Nagar (Dehradun)",
+      "Vasant Vihar (Dehradun)",
+      "Ballupur Chowk (Dehradun)",
+      "Bindal Pull (Dehradun)",
+      "Clock Tower (Dehradun)",
+      "Prince Chowk (Dehradun)",
+      "Rispana Pull (Dehradun)",
+      "Jogiwala (Dehradun)",
+      "Triveni Ghat (Rishikesh)",
+      "Ram Jhula (Rishikesh)",
+      "Laxman Jhula (Rishikesh)"
+    ],
+    "user_chosen": [
+      "Prem Nagar (Dehradun)",
+      "Vasant Vihar (Dehradun)",
+      "Ballupur Chowk (Dehradun)",
+      "Bindal Pull (Dehradun)",
+      "Clock Tower (Dehradun)",
+      "Prince Chowk (Dehradun)",
+      "Rispana Pull (Dehradun)",
+      "Jogiwala (Dehradun)",
+      "Triveni Ghat (Rishikesh)",
+      "Ram Jhula (Rishikesh)",
+      "Laxman Jhula (Rishikesh)"
+    ],
+    "choice": "shortest"
   }
 ]

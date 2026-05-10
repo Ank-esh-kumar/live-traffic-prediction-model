@@ -2,10 +2,12 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import json
+import os
 
 from routes import predict, live, route, anomaly, recommend, feedback
 from streaming.simulator import TrafficSimulator
 from streaming.state_manager import global_state_manager as state_manager
+from optimization.graph_builder import get_graph_nodes
 
 app = FastAPI(title="Smart Traffic Real-Time System")
 
@@ -31,12 +33,31 @@ app.include_router(feedback.router, prefix="/api/feedback", tags=["Feedback"])
 
 @app.on_event("startup")
 async def startup_event():
+    # Migrate existing JSON feedback to MongoDB (runs once)
+    try:
+        from database import migrate_json_feedback
+        feedback_json = os.path.join(os.path.dirname(__file__), "data", "route_feedback.json")
+        migrate_json_feedback(feedback_json)
+    except Exception as e:
+        print(f"Feedback migration skipped: {e}")
+    
     # Start the simulation loop in the background
     asyncio.create_task(simulator.run())
 
 @app.get("/")
 def read_root():
     return {"message": "Welcome to Smart Traffic Real-Time System API"}
+
+# Cached response for graph nodes (doesn't change at runtime)
+_nodes_cache = None
+
+@app.get("/api/nodes", tags=["Graph"])
+def get_nodes():
+    """Returns all graph nodes with coordinates. Cached after first call."""
+    global _nodes_cache
+    if _nodes_cache is None:
+        _nodes_cache = get_graph_nodes()
+    return {"nodes": _nodes_cache}
 
 # WebSocket Endpoint for Live Dashboard
 connected_clients = set()

@@ -5,6 +5,12 @@ from optimization.graph_builder import get_graph_nodes
 from models.anomaly_model import MockAnomalyDetector
 from models.lstm_model import MockLSTMPredictor
 
+try:
+    from database import save_traffic_snapshot, log_anomalies
+    MONGO_AVAILABLE = True
+except ImportError:
+    MONGO_AVAILABLE = False
+
 class TrafficSimulator:
     def __init__(self, state_manager, csv_path=None):
         """
@@ -45,6 +51,15 @@ class TrafficSimulator:
                 anomalies=anomalies,
                 predictions=predictions
             )
+            
+            # 5. Persist to MongoDB every 10th tick (~30s) for historical data
+            if MONGO_AVAILABLE and self.current_step % 10 == 0:
+                try:
+                    save_traffic_snapshot(current_traffic, anomalies)
+                    if anomalies:
+                        log_anomalies(anomalies)
+                except Exception:
+                    pass  # Don't crash the simulator if DB is down
             
             self.current_step += 1
             # Wait 3 seconds before next update (simulating streaming interval)

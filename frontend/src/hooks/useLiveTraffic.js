@@ -5,13 +5,13 @@ export const useLiveTraffic = () => {
   const [anomalies, setAnomalies] = useState([]);
   const [predictions, setPredictions] = useState({});
   const [isConnected, setIsConnected] = useState(false);
+  const [hasConnectedOnce, setHasConnectedOnce] = useState(false);
 
   const latestDataRef = useRef(null);
   const isFirstMessageRef = useRef(true);
 
   useEffect(() => {
-    // In a real project, read URL from env var
-    const wsUrl = 'ws://localhost:8000/ws/traffic';
+    const wsUrl = `${import.meta.env.VITE_WS_URL || 'ws://localhost:8000'}/ws/traffic`;
     let ws;
     let reconnectTimer;
 
@@ -20,6 +20,7 @@ export const useLiveTraffic = () => {
 
       ws.onopen = () => {
         setIsConnected(true);
+        setHasConnectedOnce(true);
         console.log('Connected to traffic stream');
       };
 
@@ -54,7 +55,8 @@ export const useLiveTraffic = () => {
 
     connect();
 
-    // Refresh the frontend UI every 5 minutes (300,000 ms)
+    // Refresh the frontend UI every 10 seconds for a live feel
+    // (WebSocket data arrives every 3s in background, but we throttle React re-renders)
     const intervalId = setInterval(() => {
       if (latestDataRef.current) {
         const data = latestDataRef.current;
@@ -62,7 +64,7 @@ export const useLiveTraffic = () => {
         if (data.anomalies) setAnomalies(data.anomalies);
         if (data.predictions) setPredictions(data.predictions);
       }
-    }, 5 * 60 * 1000);
+    }, 10 * 1000);
 
     return () => {
       if (reconnectTimer) clearTimeout(reconnectTimer);
@@ -71,5 +73,5 @@ export const useLiveTraffic = () => {
     };
   }, []);
 
-  return { trafficData, anomalies, predictions, isConnected };
+  return { trafficData, anomalies, predictions, isConnected, hasConnectedOnce };
 };

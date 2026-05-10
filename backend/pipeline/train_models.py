@@ -1,112 +1,99 @@
+import os
 import pandas as pd
 import numpy as np
 import joblib
-import os
 from sklearn.ensemble import IsolationForest
+from sklearn.preprocessing import MinMaxScaler
 
 try:
     import tensorflow as tf
     from tensorflow.keras.models import Sequential
     from tensorflow.keras.layers import LSTM, Dense
-    from sklearn.preprocessing import MinMaxScaler
     TF_AVAILABLE = True
 except ImportError:
     TF_AVAILABLE = False
 
-def train_anomaly_model(csv_path, save_path="saved_models/anomaly.pkl"):
-    """
-    Trains an Isolation Forest model for anomaly detection.
-    Expects a CSV with columns: ['timestamp', 'node_id', 'density']
-    """
-    print(f"Loading data from {csv_path}...")
-    # 1. Load Data
-    # df = pd.read_csv(csv_path)
-    
-    # --- MOCK DATA GENERATION FOR DEMONSTRATION ---
-    # If you don't have a CSV yet, this creates a fake dataset to train on
+# Ensure reliable absolute paths
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SAVED_MODELS_DIR = os.path.join(BASE_DIR, "saved_models")
+
+def train_anomaly_model(csv_path=None, save_path=None):
+    if save_path is None:
+        save_path = os.path.join(SAVED_MODELS_DIR, "anomaly.pkl")
+        
     print("Generating synthetic data for training demonstration...")
     np.random.seed(42)
-    normal_data = np.random.normal(loc=40, scale=10, size=1000) # Normal traffic (mean 40 density)
-    anomaly_data = np.random.normal(loc=95, scale=5, size=50)   # Anomalies (accidents/jams)
+    normal_data = np.random.normal(loc=40, scale=10, size=1000)
+    anomaly_data = np.random.normal(loc=95, scale=5, size=50)
     data = np.concatenate([normal_data, anomaly_data]).reshape(-1, 1)
-    # ----------------------------------------------
-    
-    # In a real scenario with CSV:
-    # X = df[['density']].values
-    X = data
     
     print("Training Isolation Forest...")
-    # 2. Initialize and train model
-    # contamination is the estimated percentage of anomalies in the dataset
     model = IsolationForest(n_estimators=100, contamination=0.05, random_state=42)
-    model.fit(X)
+    model.fit(data)
     
-    # 3. Save the model
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     joblib.dump(model, save_path)
     print(f"✅ Anomaly model saved successfully to {save_path}")
 
-def train_lstm_model(csv_path, save_path="saved_models/lstm.h5"):
-    """
-    Trains an LSTM model for future traffic prediction.
-    Expects a CSV with time-series traffic data.
-    """
+def train_lstm_model(save_path=None):
+    if save_path is None:
+        save_path = os.path.join(SAVED_MODELS_DIR, "lstm.keras")
+        
     print("\n--- LSTM Training ---")
     if not TF_AVAILABLE:
         print("⚠️  TensorFlow is not installed! Skipping LSTM training.")
-        print("To run this, run: pip install tensorflow")
         return
 
-    print("LSTM Training template ready.")
+    print("Downloading UCI Metro Interstate Traffic Volume dataset...")
+    url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00492/Metro_Interstate_Traffic_Volume.csv.gz"
     
-    """
-    # 1. Load Data
-    df = pd.read_csv(csv_path)
-    # Pivot so each column is a node, rows are timestamps
-    # df_pivot = df.pivot(index='timestamp', columns='node_id', values='density')
+    try:
+        df = pd.read_csv(url, compression='gzip')
+        print("Dataset loaded successfully!")
+    except Exception as e:
+        print(f"Failed to download dataset: {e}")
+        return
+        
+    volumes = df['traffic_volume'].values.reshape(-1, 1)
     
-    # 2. Scale Data
-    scaler = MinMaxScaler()
-    scaled_data = scaler.fit_transform(df_pivot.values)
-    joblib.dump(scaler, "saved_models/scaler.pkl")
+    scaler = MinMaxScaler(feature_range=(0, 100))
+    scaled_data = scaler.fit_transform(volumes)
     
-    # 3. Create Sequences (e.g., look back 10 steps to predict the next step)
-    def create_sequences(data, seq_length=10):
+    scaler_path = os.path.join(SAVED_MODELS_DIR, "scaler.pkl")
+    joblib.dump(scaler, scaler_path)
+    
+    seq_length = 10
+    
+    def create_sequences(data, seq_length):
         X, y = [], []
-        for i in range(len(data) - seq_length):
+        limit = min(len(data), 10000)
+        for i in range(limit - seq_length):
             X.append(data[i:i+seq_length])
             y.append(data[i+seq_length])
         return np.array(X), np.array(y)
         
-    X, y = create_sequences(scaled_data)
+    print("Creating sequences...")
+    X, y = create_sequences(scaled_data, seq_length)
     
-    # 4. Build LSTM Model
     model = Sequential([
-        LSTM(64, activation='relu', return_sequences=True, input_shape=(X.shape[1], X.shape[2])),
-        LSTM(32, activation='relu'),
-        Dense(X.shape[2]) # Output layer size = number of nodes
+        LSTM(32, activation='relu', input_shape=(seq_length, 1)),
+        Dense(16, activation='relu'),
+        Dense(1)
     ])
     
     model.compile(optimizer='adam', loss='mse')
     
-    # 5. Train and Save
-    print("Training LSTM...")
-    model.fit(X, y, epochs=20, batch_size=32, validation_split=0.2)
+    print("Training LSTM... (This might take a few minutes)")
+    model.fit(X, y, epochs=5, batch_size=64, validation_split=0.2)
     
     model.save(save_path)
-    print(f"✅ LSTM model saved to {save_path}")
-    """
+    print(f"✅ Real LSTM model trained and saved to {save_path}")
 
 if __name__ == "__main__":
     print("--- Smart Traffic Model Training ---")
+    os.makedirs(SAVED_MODELS_DIR, exist_ok=True)
     
-    # Create save directory
-    os.makedirs("../saved_models", exist_ok=True)
+    train_anomaly_model()
+    train_lstm_model()
     
-    # Train the Anomaly Model
-    train_anomaly_model(csv_path="dummy_path.csv", save_path="../saved_models/anomaly.pkl")
-    
-    # Train the LSTM Model (uncomment inside the function when TF is installed)
-    train_lstm_model(csv_path="dummy_path.csv", save_path="../saved_models/lstm.h5")
-    
-    print("\nNext steps: Update backend/models/anomaly_model.py to load 'anomaly.pkl' instead of using the Mock logic!")
+    print("\nTraining Complete! You can now use the models in your backend.")
