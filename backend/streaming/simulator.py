@@ -21,8 +21,7 @@ class TrafficSimulator:
         self.state_manager = state_manager
         self.csv_path = csv_path
         
-        # Load map nodes (intersections/roads)
-        self.nodes = get_graph_nodes()
+        self.nodes = None
         
         # Models
         self.anomaly_detector = MockAnomalyDetector()
@@ -71,6 +70,10 @@ class TrafficSimulator:
         Simulates rush hours using sine waves.
         """
         traffic = {}
+        if self.nodes is None:
+            from optimization.graph_builder import get_graph_nodes
+            self.nodes = get_graph_nodes()
+            
         # Simulate a daily cycle pattern (simplified to a faster cycle for demo)
         cycle = math.sin(self.current_step * 0.1) 
         

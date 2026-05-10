@@ -199,14 +199,23 @@ def _generate_synthetic_graph():
     return G
 
 # Singleton graph instance for the app
-city_graph = _generate_synthetic_graph()
+# Singleton graph instance for the app
+city_graph = None
+
+def get_graph():
+    """Returns the graph, building it lazily on first request."""
+    global city_graph
+    if city_graph is None:
+        city_graph = _generate_synthetic_graph()
+    return city_graph
 
 def get_graph_nodes():
     """
     Returns list of dicts for nodes.
     """
     nodes = []
-    for n, data in city_graph.nodes(data=True):
+    g = get_graph()
+    for n, data in g.nodes(data=True):
         nodes.append({
             "id": n,
             "lat": data["lat"],
@@ -214,7 +223,4 @@ def get_graph_nodes():
             "is_arterial": data["is_arterial"]
         })
     return nodes
-
-def get_graph():
-    return city_graph
 

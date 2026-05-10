@@ -25,10 +25,14 @@ DB_NAME = os.getenv("MONGO_DB", "smart_traffic")
 
 _client = None
 _db = None
+_db_connection_failed = False
 
 def get_db():
     """Returns the MongoDB database instance (lazy singleton)."""
-    global _client, _db
+    global _client, _db, _db_connection_failed
+    if _db_connection_failed:
+        return None
+    
     if _db is None:
         _client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
         _db = _client[DB_NAME]
@@ -40,6 +44,7 @@ def get_db():
             print(f"⚠️  MongoDB connection failed: {e}")
             print("   The app will still work, but data won't be persisted.")
             _db = None
+            _db_connection_failed = True
     return _db
 
 
