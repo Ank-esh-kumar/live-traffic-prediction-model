@@ -309,9 +309,9 @@ const Dashboard = () => {
           <div className="glass-panel">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2 className="section-title" style={{ marginBottom: 0 }}>
-                <Activity className={isConnected ? "text-green-400" : "text-red-400"} />
+                <Activity style={{ color: isConnected ? '#4ade80' : '#f87171' }} size={18} />
                 Live Network Map {activeArea && `- ${activeArea} Region`}
-                {!isConnected && <span style={{ fontSize: '0.8rem', color: hasConnectedOnce ? 'var(--warning, #eab308)' : 'var(--danger)', marginLeft: '1rem' }}>{hasConnectedOnce ? '(Updating...)' : '(Connecting...)'}</span>}
+                <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: isConnected ? '#4ade80' : '#f87171', marginLeft: '0.5rem', animation: isConnected ? 'none' : 'pulse 1.5s ease-in-out infinite' }} title={isConnected ? 'Live' : 'Reconnecting...'} />
               </h2>
               {activeRoutePath && (
                 <button

@@ -11,25 +11,35 @@ export const useLiveTraffic = () => {
   const isFirstMessageRef = useRef(true);
 
   useEffect(() => {
-    const wsUrl = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname}:8000/ws/traffic`;
+    const wsBase = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname}:8000`;
+    const apiBase = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000`;
+    const wsUrl = `${wsBase}/ws/traffic`;
     let ws;
     let reconnectTimer;
+    let retryCount = 0;
+    const MAX_RETRIES = 10;
 
-    const connect = () => {
+    const connect = async () => {
+      // Ping the backend first to wake it up (Render free tier sleeps)
+      try {
+        await fetch(`${apiBase}/`, { mode: 'cors' });
+      } catch (_) { /* ignore — just a wake-up call */ }
+
       ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
         setIsConnected(true);
         setHasConnectedOnce(true);
+        retryCount = 0; // Reset on successful connection
         console.log('Connected to traffic stream');
       };
 
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          latestDataRef.current = data; // Keep the latest data in the background
+          latestDataRef.current = data;
 
-          // Always update UI on the very first message so it's not empty for 5 mins
+          // Immediately render the first message for instant UI feedback
           if (isFirstMessageRef.current) {
             if (data.nodes) setTrafficData(data.nodes);
             if (data.anomalies) setAnomalies(data.anomalies);
@@ -43,8 +53,14 @@ export const useLiveTraffic = () => {
 
       ws.onclose = () => {
         setIsConnected(false);
-        console.log('Disconnected. Reconnecting in 3s...');
-        reconnectTimer = setTimeout(connect, 3000);
+        if (retryCount < MAX_RETRIES) {
+          const delay = Math.min(3000 * Math.pow(1.5, retryCount), 30000); // 3s → 30s max
+          retryCount++;
+          console.log(`Disconnected. Retry ${retryCount}/${MAX_RETRIES} in ${Math.round(delay/1000)}s...`);
+          reconnectTimer = setTimeout(connect, delay);
+        } else {
+          console.log('Max retries reached. Backend may be sleeping. Will retry on user interaction.');
+        }
       };
 
       ws.onerror = (err) => {
