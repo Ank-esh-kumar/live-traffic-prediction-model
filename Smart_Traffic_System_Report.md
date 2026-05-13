@@ -497,11 +497,16 @@ smart-traffic-realtime-system/
 
 1. **Real Sensor Integration** — Replace the simulator with live data from traffic cameras or IoT sensors.
 2. **Multi-Feature LSTM** — Include weather, time-of-day, and day-of-week as input features.
-3. **User Authentication** — Login system for personalized route history and preferences.
+3. **User Authentication** — Login system for personalized route history and preferences.and ask premission for notification and location. when permission is denied, show a message to the user to enable the permission from settings.
 4. **Push Notifications** — Alert users about anomalies on their saved routes.
 5. **Historical Analytics Dashboard** — Visualize traffic patterns over days/weeks/months from MongoDB snapshots.
 6. **Graph Neural Networks (GNNs)** — Replace per-node LSTM with a spatial-temporal GNN that models relationships between adjacent intersections.
-7. **Live Navigation with audio Description** 
+7. **Emergency Vehicle Preemption** — Automatically adjust traffic light timings to clear routes for emergency vehicles. push notification to the user when there is an emergency vehicle on their route and change the map color to red.
+8. **Integration with Traffic Cameras** — Integrate with actual traffic cameras to get real-time video feed for analysis.
+9. **Mobile App** — Develop a native mobile app for both Android and iOS.
+10. **More Accurate Traffic Prediction** — Use more sophisticated models like Transformers or GraphSage for better accuracy.
+11. **Offline Mode** — Enable the app to work offline with cached data and predictions.
+12. **Multi-Language Support** — Support multiple languages for broader accessibility.
 
 ---
 

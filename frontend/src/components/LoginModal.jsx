@@ -48,13 +48,14 @@ const LoginModal = ({ isOpen, onClose }) => {
           {!isLogin && (
             <div className="input-group">
               <label><User size={16} /> Username</label>
-              <input 
-                type="text" 
-                value={username} 
-                onChange={(e) => setUsername(e.target.value)} 
-                required 
-                placeholder="JohnDoe"
-              />
+                <input 
+                  type="text" 
+                  value={username} 
+                  onChange={(e) => setUsername(e.target.value)} 
+                  required 
+                  placeholder="JohnDoe"
+                  autoComplete="username"
+                />
             </div>
           )}
           
@@ -66,6 +67,7 @@ const LoginModal = ({ isOpen, onClose }) => {
               onChange={(e) => setEmail(e.target.value)} 
               required 
               placeholder="name@example.com"
+              autoComplete="email"
             />
           </div>
 
@@ -77,6 +79,7 @@ const LoginModal = ({ isOpen, onClose }) => {
               onChange={(e) => setPassword(e.target.value)} 
               required 
               placeholder="••••••••"
+              autoComplete={isLogin ? "current-password" : "new-password"}
             />
           </div>
 

@@ -78,7 +78,12 @@ async def register(user: UserCreate):
             "expires_at": None
         }
     }
-    create_user(user_dict)
+    new_user = create_user(user_dict)
+    if not new_user:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database connection failed. Please check if MongoDB is running."
+        )
     
     access_token = create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
