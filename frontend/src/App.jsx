@@ -2,6 +2,8 @@ import React, { Suspense } from 'react'
 import { useAuth } from './context/AuthContext'
 import { Activity } from 'lucide-react'
 import LoginPage from './pages/LoginPage'
+// Inside main.jsx or App.jsx
+import './index.css';
 
 // Lazy-load the Dashboard for code-splitting — the main bundle loads faster
 const Dashboard = React.lazy(() => import('./pages/Dashboard'))
@@ -38,7 +40,7 @@ function App() {
       <header className="header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ padding: '8px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '12px' }}>
-             <Activity size={24} color="#3b82f6" />
+            <Activity size={24} color="#3b82f6" />
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '1.5rem' }}>Smart Traffic AI</h1>
@@ -46,7 +48,7 @@ function App() {
           </div>
         </div>
       </header>
-      
+
       <main>
         <Suspense fallback={
           <div style={{

@@ -1,92 +1,146 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* Google Maps Dark Theme (Default) */
-  --bg-gradient-start: #202124; 
-  --bg-gradient-end: #202124;   
-  
-  --glass-bg: #303134;
-  --glass-border: #3c4043;
-  --glass-highlight: #5f6368;
-  --panel-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  
-  --text-primary: #e8eaed;
-  --text-secondary: #9aa0a6; 
-  --accent-blue: #8ab4f8;
-  --accent-glow: rgba(138, 180, 248, 0.2);
-  
-  --danger: #f28b82;
-  --danger-glow: rgba(242, 139, 130, 0.2);
+  /* 🌙 Apple iOS Dark Theme (Default) */
+  --bg-color: #000000;
+
+  /* Liquid Glass Variables */
+  --glass-bg: rgba(28, 28, 30, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.15);
+  --panel-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --glass-blur: blur(24px) saturate(180%);
+
+  /* iOS Typography & Colors */
+  --text-primary: #ffffff;
+  --text-secondary: #8e8e93;
+
+  /* iOS System Colors (Dark) */
+  --accent-blue: #0a84ff;
+  --accent-green: #32d74b;
+  --accent-orange: #ff9f0a;
+  --danger: #ff453a;
+  --danger-bg: rgba(255, 69, 58, 0.15);
 }
 
 body.light-theme {
-  /* Google Maps / iOS Light Theme */
-  --bg-gradient-start: #f0f2f5; 
-  --bg-gradient-end: #e4e6e9;   
-  
-  --glass-bg: rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.8);
-  --glass-highlight: rgba(255, 255, 255, 1);
-  --panel-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
-  
-  --text-primary: #1e293b;
-  --text-secondary: #475569; 
-  --accent-blue: #1a73e8; /* Google blue */
-  --accent-glow: rgba(26, 115, 232, 0.3);
+  /* ☀️ Apple iOS Light Theme */
+  --bg-color: #f2f2f7;
+
+  /* Liquid Glass Variables */
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(0, 0, 0, 0.05);
+  --glass-highlight: rgba(0, 0, 0, 0.1);
+  --panel-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+  --glass-blur: blur(24px) saturate(180%);
+
+  /* iOS Typography & Colors */
+  --text-primary: #000000;
+  --text-secondary: #8e8e93;
+
+  /* iOS System Colors (Light) */
+  --accent-blue: #007aff;
+  --accent-green: #34c759;
+  --accent-orange: #ff9500;
+  --danger: #ff3b30;
+  --danger-bg: rgba(255, 59, 48, 0.1);
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  /* Smooth transitions for theme switching */
+  transition: background-color 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
+    border-color 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
+    color 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 body {
-  font-family: 'Inter', sans-serif;
-  background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
-  background-attachment: fixed;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-color);
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Glassmorphism Utilities */
-.glass-panel {
+/* 📱 Sleek iOS Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-secondary);
+  border-radius: 10px;
+  opacity: 0.5;
+}
+
+/* 💎 CORE: iOS Glass Panel */
+.glass-panel,
+.ios-glass-panel {
   background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-border);
-  border-radius: 16px;
+  border-radius: 24px;
+  /* Apple Squircle radius */
   box-shadow: var(--panel-shadow);
   padding: 1.5rem;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.glass-panel:hover {
-  border-color: var(--glass-highlight);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4), 0 0 15px var(--accent-glow);
+/* 🖱️ CORE: iOS Interactive Buttons */
+.action-button,
+.ios-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 999px;
+  /* Pill shape */
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+
+  /* Apple bouncy tap physics */
+  transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1),
+    opacity 0.2s,
+    background 0.3s ease;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--glass-highlight);
-  border-radius: 4px;
+.action-button:active,
+.ios-button:active {
+  transform: scale(0.95);
+  opacity: 0.8;
 }
 
-/* Layout */
+.action-button.danger {
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-color: rgba(255, 59, 48, 0.2);
+}
+
+/* 📐 Layout Grid (Responsive) */
 .app-container {
   max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.5rem;
 }
 
 .header {
@@ -99,42 +153,47 @@ body {
   font-size: 1.75rem;
   font-weight: 800;
   letter-spacing: -0.02em;
-  background: linear-gradient(to right, #fff, #94a3b8);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
   margin: 0;
 }
 
 .dashboard-grid {
-  display: grid;
-  grid-template-columns: 1fr 350px;
-  gap: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
 }
 
-@media (max-width: 1024px) {
+@media (min-width: 1024px) {
   .dashboard-grid {
-    grid-template-columns: 1fr;
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .main-content {
+    flex: 2;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .side-panel {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    position: sticky;
+    top: 1.5rem;
+    /* Makes the side panel float as you scroll */
   }
 }
 
-.main-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-.side-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-/* Specific Components */
+/* 🗺️ Specific Components */
 .map-container {
   height: 500px;
   width: 100%;
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
   border: 1px solid var(--glass-border);
 }
@@ -144,35 +203,41 @@ body {
   width: 100%;
 }
 
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* 🚨 Alerts */
 .alert-item {
-  background: rgba(239, 68, 68, 0.1);
+  background: var(--danger-bg);
   border-left: 4px solid var(--danger);
   padding: 1rem;
   margin-bottom: 1rem;
-  border-radius: 4px 8px 8px 4px;
-  animation: pulse-border 2s infinite;
-}
-
-@keyframes pulse-border {
-  0% { box-shadow: 0 0 0 0 var(--danger-glow); }
-  70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  border-radius: 8px 12px 12px 8px;
 }
 
 .alert-item h4 {
-  color: #fca5a5;
+  color: var(--danger);
   margin-bottom: 0.25rem;
+  font-weight: 700;
 }
 
 .alert-item p {
   font-size: 0.9rem;
-  color: #f87171;
+  color: var(--text-primary);
+  opacity: 0.9;
 }
 
+/* 📊 Ticker & Density */
 .ticker-item {
   display: flex;
   justify-content: space-between;
-  padding: 0.75rem 0;
+  padding: 0.85rem 0;
   border-bottom: 1px solid var(--glass-border);
 }
 
@@ -183,75 +248,72 @@ body {
 .density-indicator {
   padding: 0.25rem 0.75rem;
   border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.density-low { background: rgba(34, 197, 94, 0.2); color: #86efac; }
-.density-med { background: rgba(234, 179, 8, 0.2); color: #fde047; }
-.density-high { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
-
-.section-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.density-low {
+  background: rgba(52, 199, 89, 0.15);
+  color: var(--accent-green);
 }
 
-/* High-End 3D Glow Effects & Animations */
+.density-med {
+  background: rgba(255, 149, 0, 0.15);
+  color: var(--accent-orange);
+}
 
-/* Glowing Routes - Traffic Aware AI */
+.density-high {
+  background: rgba(255, 59, 48, 0.15);
+  color: var(--danger);
+}
+
+/* ✨ High-End 3D Glow Effects (Traffic Aware AI) */
 .glowing-route-green {
-  filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.8)) drop-shadow(0 0 12px rgba(34, 197, 94, 0.4));
+  filter: drop-shadow(0 0 8px rgba(52, 199, 89, 0.8));
   stroke-dasharray: 20 10;
   animation: dash 3s linear infinite;
 }
 
 .glowing-route-yellow {
-  filter: drop-shadow(0 0 8px rgba(234, 179, 8, 0.8)) drop-shadow(0 0 12px rgba(234, 179, 8, 0.4));
+  filter: drop-shadow(0 0 8px rgba(255, 149, 0, 0.8));
   stroke-dasharray: 20 10;
   animation: dash 3s linear infinite;
 }
 
 .glowing-route-red {
-  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.8)) drop-shadow(0 0 12px rgba(239, 68, 68, 0.4));
+  filter: drop-shadow(0 0 8px rgba(255, 59, 48, 0.8));
   stroke-dasharray: 10 5;
   animation: dash 2s linear infinite;
 }
 
-/* Glowing Emergency Route - Red (Matches UI Button) */
 .glowing-route-emergency {
-  filter: drop-shadow(0 0 12px rgba(239, 68, 68, 1)) drop-shadow(0 0 25px rgba(239, 68, 68, 0.7));
+  filter: drop-shadow(0 0 12px var(--danger)) drop-shadow(0 0 25px rgba(255, 59, 48, 0.5));
   stroke-dasharray: 40 20;
-  animation: dash 1s linear infinite; /* Very fast flow */
+  animation: dash 1s linear infinite;
 }
 
-/* Glowing Eco-Friendly Route - Green (Matches UI Button) */
 .glowing-route-eco {
-  filter: drop-shadow(0 0 10px rgba(34, 197, 94, 0.9)) drop-shadow(0 0 15px rgba(34, 197, 94, 0.5));
+  filter: drop-shadow(0 0 10px var(--accent-green));
   stroke-dasharray: 30 15;
-  animation: dash 4s linear infinite; /* Slower, steady flow */
+  animation: dash 4s linear infinite;
 }
 
-/* Glowing AI/Fastest Route - Blue (Matches UI Button) */
 .glowing-route-ai {
-  filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.9)) drop-shadow(0 0 20px rgba(59, 130, 246, 0.5));
+  filter: drop-shadow(0 0 10px var(--accent-blue));
   stroke-dasharray: 20 10;
   animation: dash 3s linear infinite;
 }
 
-/* Glowing Custom (User) Route */
 .glowing-route-custom {
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.5));
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
   stroke-dasharray: 5 10;
   animation: dash 6s linear infinite;
 }
 
-/* Red cross-roads for emergency */
 .glowing-route-blocked {
-  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.8));
+  filter: drop-shadow(0 0 8px var(--danger));
   stroke-dasharray: 10 5;
   animation: dash 5s linear infinite;
 }
@@ -268,70 +330,42 @@ body {
 }
 
 @keyframes pulse-particle {
-  0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(10, 132, 255, 0.4);
+  }
+
+  70% {
+    box-shadow: 0 0 0 12px rgba(10, 132, 255, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(10, 132, 255, 0);
+  }
 }
 
-/* Action Buttons */
-.action-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.6rem;
-  padding: 0.65rem 1.25rem;
-  border-radius: 12px;
-  background: var(--glass-bg);
-  color: var(--text-primary);
-  border: 1px solid var(--glass-border);
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 0.85rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  white-space: nowrap;
-}
-
-.action-button:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: var(--accent-blue);
-  transform: translateY(-2px);
-  box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.4);
-}
-
-.action-button.danger {
-  color: #f87171;
-  background: rgba(239, 68, 68, 0.05);
-  border-color: rgba(239, 68, 68, 0.2);
-}
-
-.action-button.danger:hover {
-  background: #ef4444;
-  border-color: #ef4444;
-  color: #fff;
-}
-
-/* Accuracy Badge */
+/* 🎯 Accuracy Badge */
 .accuracy-badge {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: rgba(10, 132, 255, 0.1);
+  border: 1px solid rgba(10, 132, 255, 0.2);
   padding: 0.4rem 0.8rem;
-  border-radius: 12px;
+  border-radius: 999px;
+  /* Pill format */
   animation: slideInRight 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .accuracy-icon {
   width: 24px;
   height: 24px;
-  background: #3b82f6;
+  background: var(--accent-blue);
   color: #fff;
-  border-radius: 6px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 0 10px rgba(10, 132, 255, 0.4);
 }
 
 .accuracy-text {
@@ -352,11 +386,18 @@ body {
 .accuracy-text .value {
   font-size: 0.9rem;
   font-weight: 800;
-  color: #fff;
+  color: var(--text-primary);
   line-height: 1;
 }
 
 @keyframes slideInRight {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }

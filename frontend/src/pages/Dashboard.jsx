@@ -13,7 +13,6 @@ import HistoryPanel from '../components/HistoryPanel';
 import ProfileMenu from '../components/ProfileMenu';
 import IncidentModal from '../components/IncidentModal';
 
-// 1. Defined outside the component so it never causes a ReferenceError
 const CITIES_DB = {
   "India Gate (Delhi)": { lat: 28.6129, lng: 77.2295 },
   "Connaught Place (Delhi)": { lat: 28.6304, lng: 77.2177 },
@@ -73,9 +72,9 @@ const Dashboard = () => {
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [isEmergencyActive, setIsEmergencyActive] = useState(false);
   const [highGraphics, setHighGraphics] = useState(true);
-  const [routeEndpoints, setRouteEndpoints] = useState(null); // waypoints array
+  const [routeEndpoints, setRouteEndpoints] = useState(null);
   const [activeArea, setActiveArea] = useState(null);
-  const [viaRouteInfo, setViaRouteInfo] = useState(null); // via-stops comparison route
+  const [viaRouteInfo, setViaRouteInfo] = useState(null);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
   const { user, token, logout, saveToHistory, refreshUser } = useAuth();
@@ -87,13 +86,11 @@ const Dashboard = () => {
 
   const lastIncidentIdRef = useRef(null);
 
-  // Show toast when new incident arrives via websocket
   useEffect(() => {
     if (incidents && incidents.length > 0) {
       const latest = incidents[0];
       const incidentId = latest._id || latest.timestamp;
-      
-      // Only toast if this is a new incident we haven't seen yet
+
       if (lastIncidentIdRef.current !== incidentId) {
         lastIncidentIdRef.current = incidentId;
         setToastMessage(`🚨 ${latest.type} reported at ${latest.node_id}!`);
@@ -103,7 +100,6 @@ const Dashboard = () => {
     }
   }, [incidents]);
 
-  // Capture the PWA install prompt
   useEffect(() => {
     const handler = (e) => {
       e.preventDefault();
@@ -136,7 +132,6 @@ const Dashboard = () => {
     }
   }, [isLightTheme]);
 
-  // 2. Google Maps comparison — uses /dir/ path format which supports multiple waypoints
   const openGoogleMaps = () => {
     if (!activeRoutePath || activeRoutePath.length === 0) {
       alert("No active route selected to compare.");
@@ -154,8 +149,6 @@ const Dashboard = () => {
       return;
     }
 
-    // Use the /dir/ path format: /maps/dir/loc1/loc2/loc3/...
-    // This correctly supports unlimited waypoints in the browser
     const url = `https://www.google.com/maps/dir/${coords.join('/')}`;
 
     try {
@@ -168,7 +161,6 @@ const Dashboard = () => {
     }
   };
 
-  // Fetch Model Accuracy
   useEffect(() => {
     const fetchAccuracy = async () => {
       try {
@@ -180,7 +172,7 @@ const Dashboard = () => {
       }
     };
     fetchAccuracy();
-    const interval = setInterval(fetchAccuracy, 60000); // Check every minute
+    const interval = setInterval(fetchAccuracy, 60000);
     return () => clearInterval(interval);
   }, [API_URL]);
 
@@ -190,7 +182,6 @@ const Dashboard = () => {
     setFeedbackSent(false);
     setViaRouteInfo(null);
 
-    // Disable old emergency route if any
     if (isEmergencyActive) {
       await fetch(`${API_URL}/api/route/emergency`, {
         method: 'POST',
@@ -215,7 +206,7 @@ const Dashboard = () => {
       if (data.ai_path) {
         const hasStops = waypoints.length > 2 && data.via_route && !data.via_route.error;
         const finalPath = hasStops ? data.via_route.ai_path : data.ai_path;
-        
+
         if (hasStops) {
           setActiveRoutePath(data.via_route.ai_path);
           setShortestPath(data.via_route.shortest_path);
@@ -223,19 +214,18 @@ const Dashboard = () => {
           setActiveRoutePath(data.ai_path);
           setShortestPath(data.shortest_path);
         }
-        
-        setRouteInfo({ 
-          ai_distance: data.ai_distance, ai_cost: data.ai_cost, ai_time: data.ai_time, 
-          shortest_cost: data.shortest_cost, shortest_time: data.shortest_time, 
-          originalAiPath: data.ai_path 
+
+        setRouteInfo({
+          ai_distance: data.ai_distance, ai_cost: data.ai_cost, ai_time: data.ai_time,
+          shortest_cost: data.shortest_cost, shortest_time: data.shortest_time,
+          originalAiPath: data.ai_path
         });
         setAllRoutes(data.all_routes || []);
         setActiveAltIndex(data.alt_index || 0);
         setRouteEndpoints(waypoints);
 
-        // Set the selection based on the mode — but emergency overrides everything
         if (options.emergency) {
-          setSelectedChoice(null); // Emergency mode uses isEmergencyActive, not selectedChoice
+          setSelectedChoice(null);
         } else if (options.mode === 'eco') {
           setSelectedChoice('eco');
         } else if (options.mode === 'shortest') {
@@ -244,7 +234,6 @@ const Dashboard = () => {
           setSelectedChoice('ai');
         }
 
-        // Save to history if logged in
         if (user) {
           saveToHistory({
             start_node: waypoints[0],
@@ -255,28 +244,28 @@ const Dashboard = () => {
             timestamp: new Date().toISOString()
           });
         }
-        
+
         if (data.via_route && !data.via_route.error) {
           setViaRouteInfo(data.via_route);
           if (hasStops) setSelectedChoice('via_stops');
         }
 
         if (options.emergency) {
-           const emergencyPath = hasStops ? data.via_route.ai_path : data.ai_path;
-           try {
-             await fetch(`${API_URL}/api/route/emergency`, {
-                method: 'POST',
-                headers: { 
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ route: emergencyPath, active: true })
-             });
-             setIsEmergencyActive(true);
-             setSelectedChoice(null); // Clear any mode — emergency overrides all
-           } catch (err) {
-             console.error("Failed to activate emergency mode", err);
-           }
+          const emergencyPath = hasStops ? data.via_route.ai_path : data.ai_path;
+          try {
+            await fetch(`${API_URL}/api/route/emergency`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ route: emergencyPath, active: true })
+            });
+            setIsEmergencyActive(true);
+            setSelectedChoice(null);
+          } catch (err) {
+            console.error("Failed to activate emergency mode", err);
+          }
         }
       } else {
         alert(data.error || "No route found");
@@ -340,26 +329,25 @@ const Dashboard = () => {
       try {
         await fetch(`${API_URL}/api/route/emergency`, {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({ route: [], active: false })
         });
         setIsEmergencyActive(false);
-      } catch (e) {}
+      } catch (e) { }
     }
   };
 
-  // Instant mode switch — updates path color the moment a checkbox is toggled
   const handleModeChange = (newMode) => {
-    if (!activeRoutePath) return; // No route on screen, nothing to recolor
+    if (!activeRoutePath) return;
     if (newMode === 'emergency') {
       setIsEmergencyActive(true);
       setSelectedChoice(null);
     } else {
       setIsEmergencyActive(false);
-      setSelectedChoice(newMode); // 'eco' or 'ai'
+      setSelectedChoice(newMode);
     }
   };
 
@@ -391,23 +379,62 @@ const Dashboard = () => {
   }, [anomalies, activeRoutePath, activeArea]);
 
   const isInWayOfEmergency = useMemo(() => {
-    // If there is no active emergency globally, or if *this* user is the emergency vehicle, return false.
     if (!globalEmergencyRoute || globalEmergencyRoute.length === 0 || isEmergencyActive) return false;
-    
-    // Check if the user's active route intersects with the emergency route
     if (activeRoutePath && activeRoutePath.length > 0) {
       return activeRoutePath.some(node => globalEmergencyRoute.includes(node));
     }
-    
     return false;
   }, [globalEmergencyRoute, activeRoutePath, isEmergencyActive]);
 
+  // Theming Colors
+  const textPrimary = isLightTheme ? '#1a1a1e' : '#f8f9fa';
+  const textSecondary = isLightTheme ? '#6b7280' : '#a1a1aa';
+  const glassBorder = isLightTheme ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.08)';
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '-1rem', gap: '0.5rem' }}>
-        {/* PWA Install Button — always visible */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+
+      {/* INJECTED CSS FOR RESPONSIVENESS AND iOS GLASSMORPHISM */}
+      <style>{`
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: ${isLightTheme ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)'}; border-radius: 10px; }
+        
+        .dashboard-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+          width: 100%;
+        }
+        @media (min-width: 1024px) {
+          .dashboard-grid { flex-direction: row; align-items: flex-start; }
+          .main-content { flex: 2; min-width: 0; display: flex; flex-direction: column; gap: 1.5rem; }
+          .side-panel { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1.5rem; position: sticky; top: 1.5rem; }
+        }
+        
+        .ios-glass-panel {
+          background: ${isLightTheme ? 'rgba(255, 255, 255, 0.75)' : 'rgba(28, 28, 30, 0.65)'};
+          backdrop-filter: blur(24px) saturate(180%);
+          -webkit-backdrop-filter: blur(24px) saturate(180%);
+          border: 1px solid ${isLightTheme ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.08)'};
+          border-radius: 24px;
+          padding: 1.5rem;
+          box-shadow: ${isLightTheme ? '0 8px 32px rgba(0, 0, 0, 0.04)' : '0 8px 32px rgba(0, 0, 0, 0.2)'};
+          transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .ios-button {
+          backdrop-filter: blur(12px) saturate(180%);
+          -webkit-backdrop-filter: blur(12px) saturate(180%);
+          transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.2s;
+        }
+        .ios-button:active { transform: scale(0.96); opacity: 0.8; }
+      `}</style>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '-1rem', gap: '0.75rem', flexWrap: 'wrap' }}>
         {!isAppInstalled ? (
           <button
+            className="ios-button"
             onClick={() => {
               if (deferredPrompt) {
                 handleInstallClick();
@@ -417,53 +444,52 @@ const Dashboard = () => {
             }}
             style={{
               display: 'flex', alignItems: 'center', gap: '0.5rem',
-              padding: '0.5rem 1rem', borderRadius: '8px',
-              background: 'linear-gradient(135deg, #22c55e, #10b981)',
-              color: '#fff', fontWeight: 600,
-              border: 'none', cursor: 'pointer',
-              boxShadow: '0 2px 12px rgba(34, 197, 94, 0.3)',
-              transition: 'all 0.2s ease'
+              padding: '0.6rem 1.2rem', borderRadius: '999px',
+              background: isLightTheme ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.2)',
+              color: isLightTheme ? '#16a34a' : '#4ade80', fontWeight: 600,
+              border: `1px solid ${isLightTheme ? 'rgba(34, 197, 94, 0.3)' : 'rgba(74, 222, 128, 0.2)'}`,
+              cursor: 'pointer'
             }}
           >
             <Download size={18} />
             Install App
           </button>
         ) : null}
-        
+
         <button
+          className="ios-button"
           onClick={() => setIsIncidentModalOpen(true)}
           style={{
             display: 'flex', alignItems: 'center', gap: '0.5rem',
-            padding: '0.5rem 1rem', borderRadius: '8px',
-            background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-            color: '#fff', fontWeight: 600,
-            border: 'none', cursor: 'pointer',
-            boxShadow: '0 2px 12px rgba(239, 68, 68, 0.3)',
-            transition: 'all 0.2s ease'
+            padding: '0.6rem 1.2rem', borderRadius: '999px',
+            background: isLightTheme ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.2)',
+            color: isLightTheme ? '#dc2626' : '#f87171', fontWeight: 600,
+            border: `1px solid ${isLightTheme ? 'rgba(239, 68, 68, 0.2)' : 'rgba(248, 113, 113, 0.2)'}`,
+            cursor: 'pointer'
           }}
         >
           <AlertTriangle size={18} />
           Report Incident
         </button>
 
-        <ProfileMenu 
-          isLightTheme={isLightTheme} 
-          setIsLightTheme={setIsLightTheme} 
-          highGraphics={highGraphics} 
+        <ProfileMenu
+          isLightTheme={isLightTheme}
+          setIsLightTheme={setIsLightTheme}
+          highGraphics={highGraphics}
           setHighGraphics={setHighGraphics}
           onOpenPrefs={() => setIsPrefsOpen(true)}
         />
       </div>
 
       <PreferencesModal isOpen={isPrefsOpen} onClose={() => setIsPrefsOpen(false)} />
-      
-      <IncidentModal 
-        isOpen={isIncidentModalOpen} 
-        onClose={() => setIsIncidentModalOpen(false)} 
+
+      <IncidentModal
+        isOpen={isIncidentModalOpen}
+        onClose={() => setIsIncidentModalOpen(false)}
         citiesDb={CITIES_DB}
         apiUrl={API_URL}
       />
-      
+
       <EmergencyAuthModal
         isOpen={isEmergencyAuthOpen}
         onClose={() => setIsEmergencyAuthOpen(false)}
@@ -480,27 +506,32 @@ const Dashboard = () => {
 
       {toastMessage && (
         <div style={{
-          position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
-          background: 'rgba(239, 68, 68, 0.9)', color: 'white', padding: '12px 24px',
-          borderRadius: '30px', fontWeight: 600, zIndex: 9999, display: 'flex', alignItems: 'center', gap: '8px',
-          boxShadow: '0 4px 15px rgba(239, 68, 68, 0.4)', backdropFilter: 'blur(10px)',
-          animation: 'slideDown 0.3s ease-out'
+          position: 'fixed', top: '24px', left: '50%', transform: 'translateX(-50%)',
+          background: isLightTheme ? 'rgba(255, 255, 255, 0.85)' : 'rgba(40, 40, 44, 0.85)',
+          color: textPrimary, padding: '14px 28px',
+          borderRadius: '999px', fontWeight: 600, zIndex: 9999, display: 'flex', alignItems: 'center', gap: '10px',
+          boxShadow: isLightTheme ? '0 10px 40px rgba(0,0,0,0.1)' : '0 10px 40px rgba(0,0,0,0.4)',
+          backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+          border: `1px solid ${glassBorder}`,
+          animation: 'slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
         }}>
-          <Bell size={18} />
+          <Bell size={18} color="#ef4444" />
           {toastMessage}
         </div>
       )}
 
       {isInWayOfEmergency && (
-        <div style={{
-          background: 'linear-gradient(135deg, #ef4444, #b91c1c)', color: 'white', padding: '1rem',
-          borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.75rem',
-          boxShadow: '0 4px 15px rgba(239, 68, 68, 0.4)', animation: 'pulse 2s infinite'
+        <div className="ios-glass-panel" style={{
+          background: isLightTheme ? 'rgba(254, 226, 226, 0.8)' : 'rgba(127, 29, 29, 0.6)',
+          color: isLightTheme ? '#b91c1c' : '#fca5a5', padding: '1.25rem',
+          display: 'flex', alignItems: 'center', gap: '1rem',
+          border: `1px solid ${isLightTheme ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.4)'}`,
+          animation: 'pulse 2s infinite'
         }}>
-          <AlertTriangle size={24} />
+          <AlertTriangle size={28} />
           <div>
-            <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>EMERGENCY VEHICLE APPROACHING</div>
-            <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>An active emergency service is approaching your current route. Please clear the way safely.</div>
+            <div style={{ fontWeight: 700, fontSize: '1.15rem' }}>EMERGENCY VEHICLE APPROACHING</div>
+            <div style={{ fontSize: '0.95rem', opacity: 0.9, marginTop: '4px' }}>An active emergency service is approaching your current route. Please clear the way safely.</div>
           </div>
         </div>
       )}
@@ -509,127 +540,148 @@ const Dashboard = () => {
 
       <div className="dashboard-grid">
         <div className="main-content">
-          <div className="glass-panel">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 className="section-title" style={{ marginBottom: 0 }}>
-                <Activity style={{ color: isConnected ? '#4ade80' : '#f87171' }} size={18} />
+          <div className="ios-glass-panel">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 700, color: textPrimary, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Activity style={{ color: isConnected ? '#34c759' : '#ff3b30' }} size={22} />
                 Live Network Map {activeArea && `- ${activeArea} Region`}
-                <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: isConnected ? '#4ade80' : '#f87171', marginLeft: '0.5rem', animation: isConnected ? 'none' : 'pulse 1.5s ease-in-out infinite' }} title={isConnected ? 'Live' : 'Reconnecting...'} />
+                <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: isConnected ? '#34c759' : '#ff3b30', marginLeft: '0.25rem', animation: isConnected ? 'none' : 'pulse 1.5s ease-in-out infinite' }} title={isConnected ? 'Live' : 'Reconnecting...'} />
               </h2>
-              
-              {modelAccuracy && (
-                <div className="accuracy-badge" title="AI Prediction Accuracy (updated every 15m)">
-                  <div className="accuracy-icon">
-                    <Zap size={14} />
+
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                {modelAccuracy && (
+                  <div title="AI Prediction Accuracy (updated every 15m)" style={{
+                    display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0.8rem',
+                    background: isLightTheme ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.15)',
+                    borderRadius: '999px', border: `1px solid ${isLightTheme ? 'rgba(59,130,246,0.2)' : 'rgba(96,165,250,0.2)'}`
+                  }}>
+                    <Zap size={14} color="#3b82f6" />
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: isLightTheme ? '#2563eb' : '#60a5fa' }}>
+                      {modelAccuracy.accuracy.toFixed(1)}% Precision
+                    </span>
                   </div>
-                  <div className="accuracy-text">
-                    <span className="label">AI Precision</span>
-                    <span className="value">{modelAccuracy.accuracy.toFixed(1)}%</span>
+                )}
+                {isEmergencyActive && (
+                  <div style={{
+                    padding: '0.4rem 0.8rem', borderRadius: '999px',
+                    background: 'rgba(239, 68, 68, 0.15)', color: isLightTheme ? '#dc2626' : '#ef4444',
+                    border: '1px solid rgba(239, 68, 68, 0.3)', fontWeight: 600,
+                    display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem'
+                  }}>
+                    🚨 CLEARING PATH
                   </div>
-                </div>
-              )}
-              {isEmergencyActive && (
-                 <div style={{
-                    padding: '0.5rem 1rem', borderRadius: '8px',
-                    background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444',
-                    border: '1px solid rgba(239, 68, 68, 0.3)', fontWeight: 'bold',
-                    display: 'flex', alignItems: 'center', gap: '0.5rem'
-                 }}>
-                    🚨 EMERGENCY SERVICE ACTIVE - CLEARING PATH
-                 </div>
-              )}
-              {activeRoutePath && !isEmergencyActive && (
-                <button
-                  onClick={openGoogleMaps}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '0.5rem',
-                    padding: '0.5rem 1rem', borderRadius: '8px',
-                    background: 'var(--accent-blue)', color: '#fff',
-                    border: 'none', cursor: 'pointer', fontWeight: 'bold'
-                  }}
-                >
-                  <ExternalLink size={16} />
-                  Compare on Google Maps
-                </button>
-              )}
+                )}
+                {activeRoutePath && !isEmergencyActive && (
+                  <button
+                    className="ios-button"
+                    onClick={openGoogleMaps}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '0.5rem',
+                      padding: '0.5rem 1rem', borderRadius: '999px',
+                      background: '#007aff', color: '#fff',
+                      border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem'
+                    }}
+                  >
+                    <ExternalLink size={16} />
+                    Open in Maps
+                  </button>
+                )}
+              </div>
             </div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem', marginTop: '-0.5rem' }}>
+            <p style={{ color: textSecondary, fontSize: '0.95rem', marginBottom: '1.25rem', marginTop: '-0.25rem' }}>
               Real-time visualization of city roads. Green paths mean clear traffic, yellow means moderate, and red means heavy congestion.
             </p>
-            <MapView 
-              trafficData={filteredTrafficData} 
-              activeRoutePath={activeRoutePath}
-              shortestPath={shortestPath}
-              routeInfo={routeInfo}
-              allRoutes={allRoutes}
-              activeArea={activeArea}
-              isLightTheme={isLightTheme}
-              routeEndpoints={routeEndpoints} 
-              highGraphics={highGraphics} 
-              isEmergencyActive={isEmergencyActive}
-              preferredMode={user?.preferences?.preferred_mode || 'fastest'}
-              activeAltIndex={activeAltIndex}
-              incidents={incidents}
-            />
+            <div style={{ borderRadius: '16px', overflow: 'hidden', border: `1px solid ${glassBorder}` }}>
+              <MapView
+                trafficData={filteredTrafficData}
+                activeRoutePath={activeRoutePath}
+                shortestPath={shortestPath}
+                routeInfo={routeInfo}
+                allRoutes={allRoutes}
+                activeArea={activeArea}
+                isLightTheme={isLightTheme}
+                routeEndpoints={routeEndpoints}
+                highGraphics={highGraphics}
+                isEmergencyActive={isEmergencyActive}
+                preferredMode={user?.preferences?.preferred_mode || 'fastest'}
+                activeAltIndex={activeAltIndex}
+                incidents={incidents}
+              />
+            </div>
           </div>
 
           {routeInfo && allRoutes.length > 0 && activeRoutePath && !activeArea && (
-            <div className="glass-panel">
-              <h2 className="section-title" style={{ marginBottom: '1rem' }}>
-                <CheckCircle size={20} />
-                All Available Routes ({allRoutes.length})
+            <div className="ios-glass-panel">
+              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: textPrimary, display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <CheckCircle size={20} color="#007aff" />
+                Available Routes ({allRoutes.length})
               </h2>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.9rem' }}>
-                Select any route to preview it on the map. Submit your preference to help train better AI predictions!
+              <p style={{ color: textSecondary, marginBottom: '1.25rem', fontSize: '0.95rem' }}>
+                Select a route to preview. Submit your preference to help train better AI predictions.
               </p>
-              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem', maxHeight: '250px', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem', maxHeight: '280px', overflowY: 'auto', paddingRight: '4px' }}>
                 {allRoutes.map((route, idx) => {
                   const isSelected = activeAltIndex === route.alt_index;
+
+                  // Refined iOS Colors for Selection
+                  let bg, border, titleColor;
+                  if (isSelected) {
+                    bg = route.is_ai ? (isLightTheme ? 'rgba(52, 199, 89, 0.15)' : 'rgba(52, 199, 89, 0.2)')
+                      : route.is_shortest ? (isLightTheme ? 'rgba(0, 122, 255, 0.15)' : 'rgba(10, 132, 255, 0.2)')
+                        : (isLightTheme ? 'rgba(142, 142, 147, 0.15)' : 'rgba(152, 152, 157, 0.2)');
+                    border = `2px solid ${route.is_ai ? '#34c759' : route.is_shortest ? '#007aff' : '#8e8e93'}`;
+                  } else {
+                    bg = isLightTheme ? 'rgba(255,255,255,0.5)' : 'rgba(40,40,44,0.4)';
+                    border = `1px solid ${glassBorder}`;
+                  }
+
+                  titleColor = route.is_ai ? '#34c759' : route.is_shortest ? (isLightTheme ? '#007aff' : '#0a84ff') : textSecondary;
+
                   return (
                     <button
                       key={idx}
+                      className="ios-button"
                       onClick={() => { setActiveRoutePath(route.path); setActiveAltIndex(route.alt_index); setSelectedChoice(route.is_ai ? 'ai' : route.is_shortest ? 'shortest' : 'custom'); setFeedbackSent(false); }}
                       style={{
-                        flex: '1 1 280px', padding: '0.85rem 1rem', borderRadius: '10px', cursor: 'pointer',
-                        background: isSelected ? (route.is_ai ? 'rgba(34, 197, 94, 0.15)' : route.is_shortest ? 'rgba(96, 165, 250, 0.15)' : 'rgba(156, 163, 175, 0.15)') : 'var(--glass-bg)',
-                        border: isSelected ? `2px solid ${route.is_ai ? '#22c55e' : route.is_shortest ? '#60a5fa' : '#9ca3af'}` : '1px solid var(--glass-border)',
-                        color: 'var(--text-primary)', textAlign: 'left'
+                        flex: '1 1 280px', padding: '1rem 1.25rem', borderRadius: '16px', cursor: 'pointer',
+                        background: bg, border: border, color: textPrimary, textAlign: 'left'
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                        <span style={{ fontWeight: 'bold' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                        <span style={{ fontWeight: 600, fontSize: '1.05rem' }}>
                           {route.is_ai ? '🤖 AI Predicted' : route.is_shortest ? '📐 Shortest' : `🔀 Route ${idx + 1}`}
                         </span>
-                        <span style={{ fontWeight: 'bold', color: route.is_ai ? '#22c55e' : route.is_shortest ? '#60a5fa' : 'var(--text-secondary)' }}>
-                          {route.distance} km • ETA: {route.expected_time} mins
+                        <span style={{ fontWeight: 700, color: titleColor }}>
+                          {route.distance} km • {route.expected_time} m
                         </span>
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        Direct Path · {route.path[0].split('(')[0].trim()} → {route.path[route.path.length - 1].split('(')[0].trim()}
+                      <div style={{ fontSize: '0.85rem', color: textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        Path: {route.path[0].split('(')[0].trim()} → {route.path[route.path.length - 1].split('(')[0].trim()}
                       </div>
                     </button>
                   );
                 })}
               </div>
               {selectedChoice && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
+                    className="ios-button"
                     onClick={submitFeedback}
                     disabled={feedbackSent}
                     style={{
                       display: 'flex', alignItems: 'center', gap: '0.5rem',
-                      padding: '0.75rem 1.5rem', borderRadius: '8px',
-                      background: feedbackSent ? '#22c55e' : 'var(--accent-blue)',
+                      padding: '0.8rem 1.5rem', borderRadius: '999px',
+                      background: feedbackSent ? '#34c759' : '#007aff',
                       color: '#fff', border: 'none', cursor: feedbackSent ? 'default' : 'pointer',
-                      fontWeight: 'bold', opacity: feedbackSent ? 0.8 : 1
+                      fontWeight: 600, opacity: feedbackSent ? 0.9 : 1, fontSize: '1rem'
                     }}
                   >
-                    <ThumbsUp size={16} />
-                    {feedbackSent ? 'Feedback Submitted!' : 'Submit as Preferred Route'}
+                    <ThumbsUp size={18} />
+                    {feedbackSent ? 'Preference Saved' : 'Set as Preferred'}
                   </button>
                   {feedbackSent && (
-                    <span style={{ color: '#22c55e', fontSize: '0.85rem' }}>
-                      ✓ Your preference has been recorded for model training
+                    <span style={{ color: '#34c759', fontSize: '0.9rem', fontWeight: 500 }}>
+                      ✓ Model training updated
                     </span>
                   )}
                 </div>
@@ -637,86 +689,85 @@ const Dashboard = () => {
             </div>
           )}
 
-          {/* Via-Route Comparison Panel */}
           {viaRouteInfo && routeInfo && !activeArea && (
-            <div className="glass-panel">
-              <h2 className="section-title" style={{ marginBottom: '1rem' }}>
-                <Route size={20} />
-                Route Comparison: Direct vs. Via Stops
+            <div className="ios-glass-panel">
+              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: textPrimary, display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <Route size={20} color="#ff9500" />
+                Route Comparison
               </h2>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.9rem' }}>
-                Compare the direct shortest path with the route through your selected stops.
+              <p style={{ color: textSecondary, marginBottom: '1.25rem', fontSize: '0.95rem' }}>
+                Direct path vs. route through selected stops.
               </p>
-              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-                {/* Direct Route Card */}
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+
                 <button
+                  className="ios-button"
                   onClick={() => switchToPath('ai')}
                   style={{
-                    flex: '1 1 280px', padding: '1rem', borderRadius: '10px', cursor: 'pointer',
-                    background: selectedChoice === 'ai' ? 'rgba(34, 197, 94, 0.15)' : 'var(--glass-bg)',
-                    border: selectedChoice === 'ai' ? '2px solid #22c55e' : '1px solid var(--glass-border)',
-                    color: 'var(--text-primary)', textAlign: 'left'
-                  }}
-                >
+                    flex: '1 1 280px', padding: '1.25rem', borderRadius: '16px', cursor: 'pointer',
+                    background: selectedChoice === 'ai' ? (isLightTheme ? 'rgba(52, 199, 89, 0.1)' : 'rgba(52, 199, 89, 0.15)') : (isLightTheme ? 'rgba(255,255,255,0.5)' : 'rgba(40,40,44,0.4)'),
+                    border: selectedChoice === 'ai' ? '2px solid #34c759' : `1px solid ${glassBorder}`,
+                    color: textPrimary, textAlign: 'left'
+                  }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <span style={{ fontWeight: 'bold', fontSize: '1rem' }}>🚀 Direct Route</span>
-                    <span style={{ fontWeight: 'bold', color: '#22c55e' }}>
-                      {routeInfo.ai_distance} km • {routeInfo.ai_time} mins
+                    <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>🚀 Direct</span>
+                    <span style={{ fontWeight: 700, color: '#34c759', fontSize: '1.1rem' }}>
+                      {routeInfo.ai_distance} km • {routeInfo.ai_time} m
                     </span>
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                    Shortest AI-optimized path ignoring stops
+                  <div style={{ fontSize: '0.9rem', color: textSecondary }}>
+                    Optimal path ignoring stops
                   </div>
                 </button>
 
-                {/* Via-Stops Route Card */}
                 <button
+                  className="ios-button"
                   onClick={() => switchToPath('via_stops')}
                   style={{
-                    flex: '1 1 280px', padding: '1rem', borderRadius: '10px', cursor: 'pointer',
-                    background: selectedChoice === 'via_stops' ? 'rgba(245, 158, 11, 0.15)' : 'var(--glass-bg)',
-                    border: selectedChoice === 'via_stops' ? '2px solid #f59e0b' : '1px solid var(--glass-border)',
-                    color: 'var(--text-primary)', textAlign: 'left'
+                    flex: '1 1 280px', padding: '1.25rem', borderRadius: '16px', cursor: 'pointer',
+                    background: selectedChoice === 'via_stops' ? (isLightTheme ? 'rgba(255, 149, 0, 0.1)' : 'rgba(255, 149, 0, 0.15)') : (isLightTheme ? 'rgba(255,255,255,0.5)' : 'rgba(40,40,44,0.4)'),
+                    border: selectedChoice === 'via_stops' ? '2px solid #ff9500' : `1px solid ${glassBorder}`,
+                    color: textPrimary, textAlign: 'left'
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <span style={{ fontWeight: 'bold', fontSize: '1rem' }}>📍 Via Stops Route</span>
-                    <span style={{ fontWeight: 'bold', color: '#f59e0b' }}>
-                      {viaRouteInfo.ai_distance} km • {viaRouteInfo.ai_time} mins
+                    <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>📍 Via Stops</span>
+                    <span style={{ fontWeight: 700, color: '#ff9500', fontSize: '1.1rem' }}>
+                      {viaRouteInfo.ai_distance} km • {viaRouteInfo.ai_time} m
                     </span>
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                    Route through: {viaRouteInfo.stops.join(' → ')}
+                  <div style={{ fontSize: '0.9rem', color: textSecondary, marginBottom: '0.5rem', lineHeight: 1.4 }}>
+                    Through: {viaRouteInfo.stops.join(' → ')}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: viaRouteInfo.ai_distance > routeInfo.ai_distance ? '#ef4444' : '#22c55e' }}>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 500, color: viaRouteInfo.ai_distance > routeInfo.ai_distance ? '#ff3b30' : '#34c759' }}>
                     {viaRouteInfo.ai_distance > routeInfo.ai_distance
-                      ? `+${(viaRouteInfo.ai_distance - routeInfo.ai_distance).toFixed(1)} km longer than direct`
+                      ? `+${(viaRouteInfo.ai_distance - routeInfo.ai_distance).toFixed(1)} km longer`
                       : viaRouteInfo.ai_distance === routeInfo.ai_distance
-                        ? 'Same distance as direct route!'
+                        ? 'Same distance!'
                         : `${(routeInfo.ai_distance - viaRouteInfo.ai_distance).toFixed(1)} km shorter!`
                     }
                   </div>
                 </button>
               </div>
 
-              {/* Leg-by-leg breakdown */}
               {viaRouteInfo.legs && viaRouteInfo.legs.length > 0 && (
-                <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '0.75rem' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-                    Leg-by-Leg Breakdown:
+                <div style={{ borderTop: `1px solid ${glassBorder}`, paddingTop: '1rem' }}>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.75rem', color: textSecondary }}>
+                    Leg Breakdown
                   </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
                     {viaRouteInfo.legs.map((leg, i) => (
                       <div key={i} style={{
-                        padding: '0.5rem 0.75rem', borderRadius: '8px',
-                        background: 'rgba(0,0,0,0.05)', border: '1px solid var(--glass-border)',
-                        fontSize: '0.8rem', flex: '1 1 200px'
+                        padding: '0.75rem 1rem', borderRadius: '12px',
+                        background: isLightTheme ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${glassBorder}`,
+                        fontSize: '0.85rem', flex: '1 1 200px', color: textPrimary
                       }}>
-                        <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
+                        <div style={{ fontWeight: 600, marginBottom: '0.4rem' }}>
                           Leg {i + 1}: {leg.from.split('(')[0].trim()} → {leg.to.split('(')[0].trim()}
                         </div>
-                        <div style={{ color: 'var(--text-secondary)' }}>
-                          📏 {leg.ai_distance} km • ⏱️ {leg.ai_time} mins
+                        <div style={{ color: textSecondary, fontWeight: 500 }}>
+                          📏 {leg.ai_distance} km &nbsp;•&nbsp; ⏱️ {leg.ai_time} m
                         </div>
                       </div>
                     ))}
@@ -726,30 +777,34 @@ const Dashboard = () => {
             </div>
           )}
 
-          <div className="glass-panel">
-            <h2 className="section-title" style={{ marginBottom: '0.25rem' }}>Traffic Density Over Time</h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem' }}>
-              Historical and predicted traffic patterns. See how congestion fluctuates throughout the day to plan your trips better.
+          <div className="ios-glass-panel">
+            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: textPrimary, marginBottom: '0.5rem' }}>Traffic Density Over Time</h2>
+            <p style={{ color: textSecondary, fontSize: '0.95rem', marginBottom: '1.25rem' }}>
+              Historical and predicted patterns to plan your trips better.
             </p>
-            <TrafficChart trafficData={filteredTrafficData} predictions={predictions} />
+            <div style={{ borderRadius: '16px', overflow: 'hidden', padding: '0.5rem', background: isLightTheme ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.2)' }}>
+              <TrafficChart trafficData={filteredTrafficData} predictions={predictions} />
+            </div>
           </div>
         </div>
 
         <div className="side-panel">
-          <div className="glass-panel">
+          <div className="ios-glass-panel">
             <AnomalyAlert anomalies={filteredAnomalies} />
           </div>
 
-          <div className="glass-panel" style={{ flex: 1 }}>
+          <div className="ios-glass-panel" style={{ flex: 1 }}>
             <LiveTicker trafficData={filteredTrafficData} />
           </div>
 
           {user && (
-            <HistoryPanel onSelectRoute={(path) => {
-              if (path && path.length >= 2) {
-                handleRouteSelect([path[0], path[path.length - 1]]);
-              }
-            }} />
+            <div className="ios-glass-panel">
+              <HistoryPanel onSelectRoute={(path) => {
+                if (path && path.length >= 2) {
+                  handleRouteSelect([path[0], path[path.length - 1]]);
+                }
+              }} />
+            </div>
           )}
         </div>
       </div>
