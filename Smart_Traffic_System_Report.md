@@ -501,6 +501,7 @@ smart-traffic-realtime-system/
 4. **Push Notifications** — Alert users about anomalies on their saved routes.
 5. **Historical Analytics Dashboard** — Visualize traffic patterns over days/weeks/months from MongoDB snapshots.
 6. **Graph Neural Networks (GNNs)** — Replace per-node LSTM with a spatial-temporal GNN that models relationships between adjacent intersections.
+7. **Live Navigation with audio Description** 
 
 ---
 
