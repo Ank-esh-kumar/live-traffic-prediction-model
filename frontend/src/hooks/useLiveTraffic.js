@@ -4,6 +4,8 @@ export const useLiveTraffic = () => {
   const [trafficData, setTrafficData] = useState({});
   const [anomalies, setAnomalies] = useState([]);
   const [predictions, setPredictions] = useState({});
+  const [incidents, setIncidents] = useState([]);
+  const [globalEmergencyRoute, setGlobalEmergencyRoute] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
   const [hasConnectedOnce, setHasConnectedOnce] = useState(false);
 
@@ -44,6 +46,8 @@ export const useLiveTraffic = () => {
             if (data.nodes) setTrafficData(data.nodes);
             if (data.anomalies) setAnomalies(data.anomalies);
             if (data.predictions) setPredictions(data.predictions);
+            if (data.incidents) setIncidents(data.incidents);
+            if (data.emergency_route) setGlobalEmergencyRoute(data.emergency_route);
             isFirstMessageRef.current = false;
           }
         } catch (e) {
@@ -79,6 +83,8 @@ export const useLiveTraffic = () => {
         if (data.nodes) setTrafficData(data.nodes);
         if (data.anomalies) setAnomalies(data.anomalies);
         if (data.predictions) setPredictions(data.predictions);
+        if (data.incidents) setIncidents(data.incidents);
+        if (data.emergency_route) setGlobalEmergencyRoute(data.emergency_route);
       }
     }, 10 * 1000);
 
@@ -89,5 +95,5 @@ export const useLiveTraffic = () => {
     };
   }, []);
 
-  return { trafficData, anomalies, predictions, isConnected, hasConnectedOnce };
+  return { trafficData, anomalies, predictions, incidents, globalEmergencyRoute, isConnected, hasConnectedOnce };
 };

@@ -4,7 +4,7 @@ import asyncio
 import json
 import os
 
-from routes import predict, live, route, anomaly, recommend, feedback
+from routes import predict, live, route, anomaly, recommend, feedback, auth, profile
 from streaming.simulator import TrafficSimulator
 from streaming.state_manager import global_state_manager as state_manager
 from optimization.graph_builder import get_graph_nodes
@@ -24,6 +24,8 @@ app.add_middleware(
 simulator = TrafficSimulator(state_manager)
 
 # Include routers
+app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(profile.router, prefix="/api/profile", tags=["User Profile"])
 app.include_router(predict.router, prefix="/api/predict", tags=["Prediction"])
 app.include_router(live.router, prefix="/api/live", tags=["Live Traffic"])
 app.include_router(route.router, prefix="/api/route", tags=["Routing"])

@@ -6,6 +6,7 @@ Collections:
   - traffic_snapshots : Historical traffic density snapshots
   - route_feedback    : User route preference feedback
   - anomaly_log       : Logged anomaly events
+  - users             : Registered user profiles, preferences, and history
 
 Setup:
   1. Install MongoDB Community Edition:
@@ -147,3 +148,128 @@ def log_anomalies(anomalies):
         records.append(record)
         
     db.anomaly_log.insert_many(records)
+
+
+# ── User Management ──
+
+def get_user_by_email(email):
+    """Retrieve a user by email."""
+    db = get_db()
+    if db is None:
+        return None
+    return db.users.find_one({"email": email})
+
+def create_user(user_data):
+    """Create a new user record."""
+    db = get_db()
+    if db is None:
+        return None
+    result = db.users.insert_one(user_data)
+    user_data["_id"] = result.inserted_id
+    return user_data
+
+def update_user_preferences(email, preferences):
+    """Update user preferences."""
+    db = get_db()
+    if db is None:
+        return False
+    db.users.update_one(
+        {"email": email},
+        {"$set": {"preferences": preferences}}
+    )
+    return True
+
+def update_emergency_auth(email, auth_data):
+    """Update user's emergency authorization status."""
+    db = get_db()
+    if db is None:
+        return False
+    db.users.update_one(
+        {"email": email},
+        {"$set": {"emergency_auth": auth_data}}
+    )
+    return True
+
+def add_route_history(email, history_item):
+    """Add a route to user's history."""
+    db = get_db()
+    if db is None:
+        return False
+    db.users.update_one(
+        {"email": email},
+        {"$push": {"history": {
+            "$each": [history_item],
+            "$position": 0,
+            "$slice": 50 # Keep last 50 routes
+        }}}
+    )
+    return True
+
+def get_user_history(email):
+    """Get route history for a user."""
+    db = get_db()
+    if db is None:
+        return []
+    user = db.users.find_one({"email": email}, {"history": 1})
+    return user.get("history", []) if user else []
+
+# ── Prediction Accuracy ──
+
+def log_prediction_accuracy(accuracy_data):
+    """Log prediction accuracy results for the feedback loop."""
+    db = get_db()
+    if db is None:
+        return
+    accuracy_data["timestamp"] = datetime.utcnow()
+    db.prediction_accuracy.insert_one(accuracy_data)
+
+def get_latest_accuracy():
+    """Retrieve the most recent accuracy log."""
+    db = get_db()
+    if db is None:
+        return None
+    return db.prediction_accuracy.find_one(sort=[("timestamp", -1)])
+
+# ── Incidents ──
+
+def save_incident(node_id, incident_type, description, user_id=None):
+    """Save a user-reported incident."""
+    db = get_db()
+    if db is None:
+        return None
+        
+    incident = {
+        "node_id": node_id,
+        "type": incident_type,
+        "description": description,
+        "user_id": user_id,
+        "timestamp": datetime.utcnow(),
+        "active": True
+    }
+    result = db.incidents.insert_one(incident)
+    incident["_id"] = str(result.inserted_id)
+    incident["timestamp"] = incident["timestamp"].isoformat()
+    return incident
+
+def get_active_incidents(hours=2):
+    """Get active incidents from the last N hours."""
+    db = get_db()
+    if db is None:
+        return []
+        
+    from datetime import timedelta
+    cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+    
+    # Return incidents that are marked active and within the time window
+    cursor = db.incidents.find({
+        "active": True,
+        "timestamp": {"$gte": cutoff_time}
+    }).sort("timestamp", -1)
+    
+    incidents = []
+    for inc in cursor:
+        inc["_id"] = str(inc["_id"])
+        inc["timestamp"] = inc["timestamp"].isoformat()
+        incidents.append(inc)
+        
+    return incidents

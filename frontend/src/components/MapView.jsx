@@ -124,7 +124,21 @@ const createCustomIcon = (color) => {
   });
 };
 
-const fetchFullOSRMSegments = async (pathNodes) => {
+const createIncidentIcon = () => {
+  return L.divIcon({
+    className: 'incident-pin',
+    html: `
+      <div style="background: white; border-radius: 50%; padding: 4px; box-shadow: 0 0 15px rgba(239, 68, 68, 0.8); display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 2px solid #ef4444; animation: pulse 2s infinite;">
+        <span style="font-size: 16px;">⚠️</span>
+      </div>
+    `,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16]
+  });
+};
+
+const fetchFullOSRMSegments = async (pathNodes, altIndex = 0) => {
   if (!pathNodes || pathNodes.length < 2) return [];
   const cities = pathNodes.map(id => CITIES.find(c => c.id === id)).filter(Boolean);
   if (cities.length < 2) return [];
@@ -132,32 +146,38 @@ const fetchFullOSRMSegments = async (pathNodes) => {
   const coordsString = cities.map(c => `${c.lng},${c.lat}`).join(';');
 
   try {
-    // overview=false & steps=true gives us the exact geometry split perfectly by each waypoint (leg)
-    const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=false&geometries=geojson&steps=true`);
+    // Fetch alternatives=3 so we can get smooth, native alternate highways without forcing graph nodes
+    const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=false&geometries=geojson&steps=true&alternatives=3`);
     const data = await response.json();
 
-    if (data.routes && data.routes[0] && data.routes[0].legs) {
-      const segments = [];
-      data.routes[0].legs.forEach((leg, i) => {
-        const positions = [];
-        if (leg.steps) {
-          leg.steps.forEach(step => {
-            if (step.geometry && step.geometry.coordinates) {
-              step.geometry.coordinates.forEach(c => positions.push([c[1], c[0]]));
-            }
+    if (data.routes && data.routes.length > 0) {
+      // Pick the alternative route requested, or fallback to the first one
+      const routeIdx = Math.min(altIndex, data.routes.length - 1);
+      const selectedRoute = data.routes[routeIdx];
+      
+      if (selectedRoute.legs) {
+        const segments = [];
+        selectedRoute.legs.forEach((leg, i) => {
+          const positions = [];
+          if (leg.steps) {
+            leg.steps.forEach(step => {
+              if (step.geometry && step.geometry.coordinates) {
+                step.geometry.coordinates.forEach(c => positions.push([c[1], c[0]]));
+              }
+            });
+          }
+          // Fallback to straight line if geometry is missing for some reason
+          if (positions.length === 0) {
+            positions.push([cities[i].lat, cities[i].lng], [cities[i + 1].lat, cities[i + 1].lng]);
+          }
+          segments.push({
+            startId: pathNodes[i],
+            destinationId: pathNodes[i + 1] || pathNodes[i], // The node this segment leads to
+            positions
           });
-        }
-        // Fallback to straight line if geometry is missing for some reason
-        if (positions.length === 0) {
-          positions.push([cities[i].lat, cities[i].lng], [cities[i + 1].lat, cities[i + 1].lng]);
-        }
-        segments.push({
-          startId: pathNodes[i],
-          destinationId: pathNodes[i + 1], // The node this segment leads to
-          positions
         });
-      });
-      return segments;
+        return segments;
+      }
     }
   } catch (err) {
     console.error("OSRM full route fetch failed", err);
@@ -177,9 +197,9 @@ const fetchFullOSRMSegments = async (pathNodes) => {
 
   const osrmCache = new Map();
 
-  const fetchSimpleOSRMRoute = async (pathNodes) => {
+  const fetchSimpleOSRMRoute = async (pathNodes, altIndex = 0) => {
     if (!pathNodes || pathNodes.length < 2) return [];
-    const cacheKey = pathNodes.join('|');
+    const cacheKey = pathNodes.join('|') + '|alt:' + altIndex;
     if (osrmCache.has(cacheKey)) return osrmCache.get(cacheKey);
 
     const cities = pathNodes.map(id => CITIES.find(c => c.id === id)).filter(Boolean);
@@ -187,10 +207,11 @@ const fetchFullOSRMSegments = async (pathNodes) => {
 
     const coordsString = cities.map(c => `${c.lng},${c.lat}`).join(';');
     try {
-      const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`);
+      const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson&alternatives=3`);
       const data = await response.json();
-      if (data.routes && data.routes[0]) {
-        const positions = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+      if (data.routes && data.routes.length > 0) {
+        const routeIdx = Math.min(altIndex, data.routes.length - 1);
+        const positions = data.routes[routeIdx].geometry.coordinates.map(c => [c[1], c[0]]);
         osrmCache.set(cacheKey, positions);
         return positions;
       }
@@ -264,13 +285,14 @@ const fetchFullOSRMSegments = async (pathNodes) => {
     });
   };
 
-  const MapView = ({ trafficData, activeRoutePath, shortestPath, routeInfo, allRoutes, activeArea, isLightTheme, routeEndpoints }) => {
+  const MapView = ({ trafficData, activeRoutePath, shortestPath, routeInfo, allRoutes, activeArea, isLightTheme, routeEndpoints, highGraphics, isEmergencyActive, preferredMode, selectedChoice, activeAltIndex, incidents = [] }) => {
     const [routeGeometries, setRouteGeometries] = useState([]);
     const [shortestLine, setShortestLine] = useState([]);
     const [altRouteLines, setAltRouteLines] = useState([]); // [{positions, distance, is_ai, is_shortest, path}]
     const [isLoadingGeometry, setIsLoadingGeometry] = useState(false);
     const [areaBoundary, setAreaBoundary] = useState(null); // [[lat,lng], ...]
     const [zoomLevel, setZoomLevel] = useState(8);
+    const [legendOpen, setLegendOpen] = useState(true);
 
     const activeStr = activeRoutePath ? activeRoutePath.join(',') : '';
     const shortestStr = shortestPath ? shortestPath.join(',') : '';
@@ -279,6 +301,11 @@ const fetchFullOSRMSegments = async (pathNodes) => {
     useEffect(() => {
       const buildGeometries = async () => {
         setIsLoadingGeometry(true);
+        // FORCE CLEAR PREVIOUS PATHS IMMEDIATELY
+        setRouteGeometries([]);
+        setShortestLine([]);
+        setAltRouteLines([]);
+        setAreaBoundary(null);
 
         try {
           if (activeArea) {
@@ -311,7 +338,7 @@ const fetchFullOSRMSegments = async (pathNodes) => {
           } else {
             // Normal A-to-B Routing Mode
             if (activeRoutePath && activeRoutePath.length > 1) {
-              const segments = await fetchFullOSRMSegments(activeRoutePath);
+              const segments = await fetchFullOSRMSegments(activeRoutePath, activeAltIndex);
               setRouteGeometries(segments);
             } else {
               setRouteGeometries([]);
@@ -344,7 +371,7 @@ const fetchFullOSRMSegments = async (pathNodes) => {
         setAltRouteLines([]);
         setAreaBoundary(null);
       }
-    }, [activeStr, shortestStr, activeArea]);
+    }, [activeStr, shortestStr, activeArea, activeAltIndex]);
 
     // Separate effect for alternative routes — runs when allRoutes data arrives from backend
     useEffect(() => {
@@ -354,27 +381,34 @@ const fetchFullOSRMSegments = async (pathNodes) => {
       }
 
       const fetchAltRoutes = async () => {
-        // Pick at most 2 shortest non-AI routes
-        const nonAiRoutes = allRoutes
-          .filter(r => !r.is_ai)
+        // We only want to show routes that are NOT currently active on the map
+        const alternatives = allRoutes
+          .filter(r => r.alt_index !== activeAltIndex)
           .sort((a, b) => a.distance - b.distance)
-          .slice(0, 2);
+          .slice(0, 2); // Show at most 2 alternatives to keep map clean
 
-        if (nonAiRoutes.length === 0) {
+        if (alternatives.length === 0) {
           setAltRouteLines([]);
           return;
         }
 
-        const altPromises = nonAiRoutes.map(async (r) => {
-          const positions = await fetchSimpleOSRMRoute(r.path);
-          return { positions, distance: r.distance, expected_time: r.expected_time, is_shortest: r.is_shortest, is_ai: r.is_ai, path: r.path };
+        const altPromises = alternatives.map(async (r) => {
+          const positions = await fetchSimpleOSRMRoute(r.path, r.alt_index);
+          return { 
+            positions, 
+            distance: r.distance, 
+            expected_time: r.expected_time, 
+            is_shortest: r.is_shortest, 
+            is_ai: r.is_ai, 
+            path: r.path 
+          };
         });
         const altLines = await Promise.all(altPromises);
         setAltRouteLines(altLines);
       };
 
       fetchAltRoutes();
-    }, [allRoutes]);
+    }, [allRoutes, activeStr, activeArea]);
 
     // 2. Derive colored segments instantly when live trafficData changes
     const coloredSegments = useMemo(() => {
@@ -395,6 +429,50 @@ const fetchFullOSRMSegments = async (pathNodes) => {
         };
       });
     }, [routeGeometries, trafficData]);
+
+    // 3. Apply Styles (Color & Glow) — traffic colors by default, solid overrides for eco/emergency
+    const styledSegments = useMemo(() => {
+      return coloredSegments.map(segment => {
+        let polylineClass = '';
+        let pathColor = segment.color;
+
+        if (highGraphics && !activeArea) {
+          if (isEmergencyActive) {
+            // Emergency: solid RED override with fast-pulse glow
+            polylineClass = 'glowing-route-emergency';
+            pathColor = '#ef4444'; 
+          } else {
+            const currentMode = selectedChoice || (preferredMode === 'eco' ? 'eco' : 'ai');
+
+            if (currentMode === 'eco') {
+              // Eco: solid GREEN override with steady glow
+              polylineClass = 'glowing-route-eco';
+              pathColor = '#22c55e';
+            } else {
+              // AI / Shortest / Default: show TRAFFIC-BASED colors with matching glow
+              pathColor = segment.color;
+              if (pathColor === '#ef4444') polylineClass = 'glowing-route-red';
+              else if (pathColor === '#eab308') polylineClass = 'glowing-route-yellow';
+              else polylineClass = 'glowing-route-green';
+            }
+          }
+        } else if (!highGraphics && !activeArea) {
+          // Low graphics: no glow, but still apply color logic
+          if (isEmergencyActive) {
+            pathColor = '#ef4444';
+          } else {
+            const currentMode = selectedChoice || (preferredMode === 'eco' ? 'eco' : 'ai');
+            if (currentMode === 'eco') {
+              pathColor = '#22c55e';
+            } else {
+              pathColor = segment.color; // Traffic colors
+            }
+          }
+        }
+
+        return { ...segment, polylineClass, pathColor };
+      });
+    }, [coloredSegments, isEmergencyActive, selectedChoice, preferredMode, highGraphics, activeArea]);
 
     const centerLat = 29.5;
     const centerLng = 77.5;
@@ -449,13 +527,13 @@ const fetchFullOSRMSegments = async (pathNodes) => {
 
           {/* Area Boundary Polygon rendering removed per user request, but areaBoundary state is still used by MapBoundsController for camera framing */}
 
-          {/* Draw ALL alternative routes (faded, underneath everything) */}
-          {altRouteLines.map((alt, idx) => (
+          {/* Draw Alternative routes ONLY if no specific choice has been made yet to prevent color clutter */}
+          {!selectedChoice && !isEmergencyActive && altRouteLines.map((alt, idx) => (
             <Polyline
               key={`alt-${idx}`}
               positions={alt.positions}
               color={alt.is_shortest ? '#60a5fa' : '#9ca3af'}
-              weight={zoomLevel < 10 ? 2 : 4}
+              weight={zoomLevel <= 7 ? 1 : zoomLevel < 10 ? 2 : 3}
               opacity={0.3}
               dashArray="8, 6"
               lineCap="round"
@@ -483,15 +561,17 @@ const fetchFullOSRMSegments = async (pathNodes) => {
           ))}
 
           {/* Draw colored AI segments or Area Roads */}
-          {coloredSegments.map((segment, idx) => (
-            <Polyline
-              key={`ai-${idx}`}
-              positions={segment.positions}
-              color={segment.color}
-              weight={zoomLevel < 10 ? 3 : (zoomLevel < 12 ? 5 : 7)}
-              opacity={0.85}
-              lineCap="round"
-            >
+          {styledSegments.map((segment, idx) => {
+            return (
+              <Polyline
+                key={`ai-${idx}-${segment.polylineClass}`}
+                positions={segment.positions}
+                color={segment.pathColor}
+                weight={zoomLevel <= 7 ? 1.5 : zoomLevel <= 9 ? 2.5 : zoomLevel <= 11 ? 4 : zoomLevel <= 13 ? 5.5 : 7}
+                opacity={0.85}
+                lineCap="round"
+                className={segment.polylineClass}
+              >
               {(() => {
                 const aiDist = routeInfo?.ai_distance || (allRoutes?.find(r => r.is_ai)?.distance);
                 return (<>
@@ -522,7 +602,8 @@ const fetchFullOSRMSegments = async (pathNodes) => {
                 </>);
               })()}
             </Polyline>
-          ))}
+            );
+          })}
 
           {CITIES.map((node) => {
             // Hide ALL markers when nothing is selected
@@ -534,8 +615,9 @@ const fetchFullOSRMSegments = async (pathNodes) => {
             // In area mode, hide pins not matching the area
             if (activeArea && !isAreaMatch) return null;
 
-            // In route mode, only show nodes on the route
-            if (activeRoutePath && !isOnRoute) return null;
+            // In route mode, ONLY show explicitly requested waypoints (start, end, user stops)
+            const isEndpoint = routeEndpoints ? routeEndpoints.includes(node.id) : false;
+            if (activeRoutePath && !isEndpoint) return null;
 
             const density = trafficData[node.id];
             const color = getTrafficColor(density);
@@ -579,6 +661,40 @@ const fetchFullOSRMSegments = async (pathNodes) => {
               </React.Fragment>
             );
           })}
+
+          {/* Render Incidents */}
+          {incidents && incidents.length > 0 && incidents.map((incident) => {
+            const city = CITIES.find(c => c.id === incident.node_id);
+            if (!city) return null;
+            
+            return (
+              <Marker
+                key={incident._id || incident.timestamp}
+                position={[city.lat, city.lng]}
+                icon={createIncidentIcon()}
+              >
+                <Popup className="glass-popup">
+                  <div style={{ color: '#000', minWidth: '200px' }}>
+                    <div style={{ fontWeight: 'bold', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                      ⚠️ {incident.type}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', marginBottom: '8px' }}>
+                      Location: <strong>{incident.node_id}</strong>
+                    </div>
+                    {incident.description && (
+                      <div style={{ fontSize: '0.8rem', fontStyle: 'italic', color: '#4b5563', marginBottom: '8px' }}>
+                        "{incident.description}"
+                      </div>
+                    )}
+                    <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>
+                      Reported: {new Date(incident.timestamp).toLocaleTimeString()}
+                    </div>
+                  </div>
+                </Popup>
+              </Marker>
+            );
+          })}
+
         </MapContainer>
 
         {/* Map Legend */}
@@ -589,13 +705,28 @@ const fetchFullOSRMSegments = async (pathNodes) => {
           zIndex: 1000,
           background: isLightTheme ? 'rgba(255, 255, 255, 0.85)' : 'rgba(15, 23, 42, 0.85)',
           backdropFilter: 'blur(8px)',
-          padding: '1rem',
+          padding: legendOpen ? '1rem' : '0.5rem 0.75rem',
           borderRadius: '8px',
           border: `1px solid ${isLightTheme ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
           fontSize: '0.8rem',
-          color: isLightTheme ? '#1e293b' : '#fff'
+          color: isLightTheme ? '#1e293b' : '#fff',
+          transition: 'all 0.25s ease',
+          cursor: 'default',
+          minWidth: legendOpen ? '160px' : 'auto'
         }}>
-          <div style={{ marginBottom: '0.5rem', fontWeight: 'bold' }}>Map Legend</div>
+          <div 
+            onClick={() => setLegendOpen(prev => !prev)} 
+            style={{ 
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+              gap: '0.5rem', fontWeight: 'bold', cursor: 'pointer', userSelect: 'none',
+              marginBottom: legendOpen ? '0.5rem' : 0
+            }}
+          >
+            <span>Map Legend</span>
+            <span style={{ fontSize: '0.7rem', opacity: 0.6, transition: 'transform 0.25s', transform: legendOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+          </div>
+          {legendOpen && (
+            <>
           {activeArea ? (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
@@ -611,20 +742,51 @@ const fetchFullOSRMSegments = async (pathNodes) => {
                 <span style={{ color: isLightTheme ? '#475569' : '#94a3b8', fontSize: '0.75rem' }}>Low • Med • High</span>
               </div>
             </>
-          ) : (
-            <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                <div style={{ width: '20px', height: '4px', background: 'linear-gradient(to right, #22c55e, #eab308, #ef4444)', borderRadius: '2px' }}></div>
-                <span>AI Predicted Optimal Path</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                <div style={{ width: '20px', height: '0', borderTop: '3px dashed #60a5fa' }}></div>
-                <span style={{ color: isLightTheme ? '#475569' : '#94a3b8' }}>Shortest Physical Path</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={{ width: '20px', height: '0', borderTop: '2px dashed #9ca3af', opacity: 0.5 }}></div>
-                <span style={{ color: isLightTheme ? '#475569' : '#94a3b8' }}>Alternative Routes</span>
-              </div>
+          ) : (() => {
+            const currentMode = isEmergencyActive ? 'emergency' : (selectedChoice || (preferredMode === 'eco' ? 'eco' : 'ai'));
+            return (
+              <>
+                {currentMode === 'emergency' ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                    <div style={{ width: '20px', height: '4px', background: '#ef4444', borderRadius: '2px', boxShadow: '0 0 10px #ef4444' }}></div>
+                    <span style={{ color: '#ef4444', fontWeight: 'bold' }}>🚨 EMERGENCY CLEAR PATH</span>
+                  </div>
+                ) : currentMode === 'eco' ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                    <div style={{ width: '20px', height: '4px', background: '#22c55e', borderRadius: '2px', boxShadow: '0 0 10px #22c55e' }}></div>
+                    <span style={{ color: '#22c55e', fontWeight: 'bold' }}>🌿 Eco-Friendly Route</span>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                      <div style={{ width: '20px', height: '4px', background: 'linear-gradient(to right, #22c55e, #eab308, #ef4444)', borderRadius: '2px' }}></div>
+                      <span style={{ fontWeight: 'bold' }}>🤖 AI Route (Traffic Colored)</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                      <div style={{ display: 'flex', gap: '2px' }}>
+                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }}></div>
+                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#eab308' }}></div>
+                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444' }}></div>
+                      </div>
+                      <span style={{ color: isLightTheme ? '#475569' : '#94a3b8', fontSize: '0.75rem' }}>Low • Med • High Traffic</span>
+                    </div>
+                  </>
+                )}
+                {!isEmergencyActive && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                      <div style={{ width: '20px', height: '0', borderTop: '3px dashed #60a5fa', opacity: 0.4 }}></div>
+                      <span style={{ color: isLightTheme ? '#475569' : '#94a3b8' }}>Shortest Path Ref.</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ width: '20px', height: '0', borderTop: '2px dashed #9ca3af', opacity: 0.5 }}></div>
+                      <span style={{ color: isLightTheme ? '#475569' : '#94a3b8' }}>Alternative Routes</span>
+                    </div>
+                  </>
+                )}
+              </>
+            );
+          })()}
             </>
           )}
         </div>

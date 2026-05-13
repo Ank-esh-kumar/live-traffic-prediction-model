@@ -14,14 +14,21 @@ router = APIRouter()
 class RouteRequest(BaseModel):
     start_node: str
     end_node: str
+    mode: Optional[str] = "fast"
 
 class ViaRouteRequest(BaseModel):
     start_node: str
     via_node: str
     end_node: str
+    mode: Optional[str] = "fast"
 
 class MultiRouteRequest(BaseModel):
     waypoints: List[str]  # Minimum 2: [start, stop1?, stop2?, ..., end]
+    mode: Optional[str] = "fast"
+
+class EmergencyRequest(BaseModel):
+    route: List[str]
+    active: bool
 
 @router.post("/")
 def get_route(request: RouteRequest):
@@ -32,7 +39,7 @@ def get_route(request: RouteRequest):
     state = state_manager.get_current_state()
     current_traffic = state.get("nodes", {})
     
-    result = calculate_multi_stop_route([request.start_node, request.end_node], current_traffic)
+    result = calculate_multi_stop_route([request.start_node, request.end_node], current_traffic, request.mode)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
         
@@ -49,7 +56,8 @@ def get_via_route(request: ViaRouteRequest):
     
     result = calculate_multi_stop_route(
         [request.start_node, request.via_node, request.end_node],
-        current_traffic
+        current_traffic,
+        request.mode
     )
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -90,11 +98,43 @@ def get_multi_stop_route(request: MultiRouteRequest):
     state = state_manager.get_current_state()
     current_traffic = state.get("nodes", {})
     
-    result = calculate_multi_stop_route(waypoints, current_traffic)
+    result = calculate_multi_stop_route(waypoints, current_traffic, request.mode)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
     
     return result
+
+from routes.auth import get_current_user
+from fastapi import Depends
+
+@router.post("/emergency")
+def toggle_emergency(request: EmergencyRequest, current_user: dict = Depends(get_current_user)):
+    """
+    Activates or deactivates an emergency route.
+    When active, the nodes on the route are forced to 0 density (green wave),
+    and intersecting cross-roads are forced to 100 density (red).
+    """
+    
+    # Authorization check
+    auth_data = current_user.get("emergency_auth", {})
+    if not auth_data.get("authorized"):
+        raise HTTPException(status_code=403, detail="You do not have emergency service authorization.")
+        
+    # Check expiration for temporary medical passes
+    if auth_data.get("expires_at"):
+        from datetime import datetime
+        expires = datetime.fromisoformat(auth_data["expires_at"])
+        if datetime.utcnow() > expires:
+            raise HTTPException(status_code=403, detail="Your emergency authorization has expired.")
+
+    if request.active:
+        if not request.route:
+            raise HTTPException(status_code=400, detail="Route cannot be empty when activating emergency mode")
+        state_manager.set_emergency_route(request.route)
+        return {"status": "success", "message": "Emergency service activated"}
+    else:
+        state_manager.clear_emergency_route()
+        return {"status": "success", "message": "Emergency service deactivated"}
 
 @router.get("/area/{area_name}")
 def get_area_roads(area_name: str):

@@ -1,11 +1,17 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useLiveTraffic } from '../hooks/useLiveTraffic';
 import MapView from '../components/MapView';
 import TrafficChart from '../components/TrafficChart';
 import LiveTicker from '../components/LiveTicker';
 import AnomalyAlert from '../components/AnomalyAlert';
 import RoutePanel from '../components/RoutePanel';
-import { Activity, Sun, Moon, ExternalLink, CheckCircle, ThumbsUp, Route, Download } from 'lucide-react';
+import { Activity, Sun, Moon, ExternalLink, CheckCircle, ThumbsUp, Route, Download, User as UserIcon, LogOut, Settings, Zap, AlertTriangle, Bell, Lock } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import PreferencesModal from '../components/PreferencesModal';
+import EmergencyAuthModal from '../components/EmergencyAuthModal';
+import HistoryPanel from '../components/HistoryPanel';
+import ProfileMenu from '../components/ProfileMenu';
+import IncidentModal from '../components/IncidentModal';
 
 // 1. Defined outside the component so it never causes a ReferenceError
 const CITIES_DB = {
@@ -53,20 +59,49 @@ const CITIES_DB = {
   "Sahastradhara Crossing (Dehradun)": { lat: 30.3550, lng: 78.0710 }
 };
 
+const API_URL = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000`;
+
 const Dashboard = () => {
-  const { trafficData, anomalies, predictions, isConnected, hasConnectedOnce } = useLiveTraffic();
+  const { trafficData, anomalies, predictions, incidents, globalEmergencyRoute, isConnected, hasConnectedOnce } = useLiveTraffic();
   const [activeRoutePath, setActiveRoutePath] = useState(null);
+  const [activeAltIndex, setActiveAltIndex] = useState(0);
   const [shortestPath, setShortestPath] = useState(null);
   const [routeInfo, setRouteInfo] = useState(null);
   const [allRoutes, setAllRoutes] = useState([]);
   const [isLightTheme, setIsLightTheme] = useState(false);
   const [selectedChoice, setSelectedChoice] = useState(null);
   const [feedbackSent, setFeedbackSent] = useState(false);
+  const [isEmergencyActive, setIsEmergencyActive] = useState(false);
+  const [highGraphics, setHighGraphics] = useState(true);
   const [routeEndpoints, setRouteEndpoints] = useState(null); // waypoints array
   const [activeArea, setActiveArea] = useState(null);
   const [viaRouteInfo, setViaRouteInfo] = useState(null); // via-stops comparison route
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
+  const { user, token, logout, saveToHistory, refreshUser } = useAuth();
+  const [isPrefsOpen, setIsPrefsOpen] = useState(false);
+  const [isIncidentModalOpen, setIsIncidentModalOpen] = useState(false);
+  const [isEmergencyAuthOpen, setIsEmergencyAuthOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [modelAccuracy, setModelAccuracy] = useState(null);
+
+  const lastIncidentIdRef = useRef(null);
+
+  // Show toast when new incident arrives via websocket
+  useEffect(() => {
+    if (incidents && incidents.length > 0) {
+      const latest = incidents[0];
+      const incidentId = latest._id || latest.timestamp;
+      
+      // Only toast if this is a new incident we haven't seen yet
+      if (lastIncidentIdRef.current !== incidentId) {
+        lastIncidentIdRef.current = incidentId;
+        setToastMessage(`🚨 ${latest.type} reported at ${latest.node_id}!`);
+        const timer = setTimeout(() => setToastMessage(''), 5000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [incidents]);
 
   // Capture the PWA install prompt
   useEffect(() => {
@@ -133,16 +168,43 @@ const Dashboard = () => {
     }
   };
 
-  const handleRouteSelect = async (waypoints) => {
+  // Fetch Model Accuracy
+  useEffect(() => {
+    const fetchAccuracy = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/live/accuracy`);
+        const data = await response.json();
+        if (data && !data.error) setModelAccuracy(data);
+      } catch (err) {
+        console.error("Failed to fetch accuracy:", err);
+      }
+    };
+    fetchAccuracy();
+    const interval = setInterval(fetchAccuracy, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [API_URL]);
+
+  const handleRouteSelect = async (waypoints, options = { mode: 'fast', emergency: false }) => {
     setActiveArea(null);
     setSelectedChoice(null);
     setFeedbackSent(false);
     setViaRouteInfo(null);
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000`}/api/route/multi`, {
+
+    // Disable old emergency route if any
+    if (isEmergencyActive) {
+      await fetch(`${API_URL}/api/route/emergency`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ waypoints })
+        body: JSON.stringify({ route: [], active: false })
+      });
+      setIsEmergencyActive(false);
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/api/route/multi`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ waypoints, mode: options.mode })
       });
       if (!response.ok) {
         const errData = await response.json();
@@ -151,8 +213,8 @@ const Dashboard = () => {
       }
       const data = await response.json();
       if (data.ai_path) {
-        // When stops are provided, show the via-stops route as the primary map route
         const hasStops = waypoints.length > 2 && data.via_route && !data.via_route.error;
+        const finalPath = hasStops ? data.via_route.ai_path : data.ai_path;
         
         if (hasStops) {
           setActiveRoutePath(data.via_route.ai_path);
@@ -168,11 +230,53 @@ const Dashboard = () => {
           originalAiPath: data.ai_path 
         });
         setAllRoutes(data.all_routes || []);
+        setActiveAltIndex(data.alt_index || 0);
         setRouteEndpoints(waypoints);
+
+        // Set the selection based on the mode — but emergency overrides everything
+        if (options.emergency) {
+          setSelectedChoice(null); // Emergency mode uses isEmergencyActive, not selectedChoice
+        } else if (options.mode === 'eco') {
+          setSelectedChoice('eco');
+        } else if (options.mode === 'shortest') {
+          setSelectedChoice('shortest');
+        } else {
+          setSelectedChoice('ai');
+        }
+
+        // Save to history if logged in
+        if (user) {
+          saveToHistory({
+            start_node: waypoints[0],
+            end_node: waypoints[waypoints.length - 1],
+            path: finalPath,
+            distance: hasStops ? data.via_route.ai_distance : data.ai_distance,
+            time_taken: hasStops ? data.via_route.ai_time : data.ai_time,
+            timestamp: new Date().toISOString()
+          });
+        }
         
         if (data.via_route && !data.via_route.error) {
           setViaRouteInfo(data.via_route);
           if (hasStops) setSelectedChoice('via_stops');
+        }
+
+        if (options.emergency) {
+           const emergencyPath = hasStops ? data.via_route.ai_path : data.ai_path;
+           try {
+             await fetch(`${API_URL}/api/route/emergency`, {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ route: emergencyPath, active: true })
+             });
+             setIsEmergencyActive(true);
+             setSelectedChoice(null); // Clear any mode — emergency overrides all
+           } catch (err) {
+             console.error("Failed to activate emergency mode", err);
+           }
         }
       } else {
         alert(data.error || "No route found");
@@ -198,7 +302,7 @@ const Dashboard = () => {
   const submitFeedback = async () => {
     if (!selectedChoice || !routeInfo) return;
     try {
-      await fetch(`${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000`}/api/feedback`, {
+      await fetch(`${API_URL}/api/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -222,7 +326,7 @@ const Dashboard = () => {
     setActiveArea(areaName);
   };
 
-  const handleClear = () => {
+  const handleClear = async () => {
     setActiveRoutePath(null);
     setShortestPath(null);
     setRouteInfo(null);
@@ -232,6 +336,31 @@ const Dashboard = () => {
     setFeedbackSent(false);
     setRouteEndpoints(null);
     setViaRouteInfo(null);
+    if (isEmergencyActive) {
+      try {
+        await fetch(`${API_URL}/api/route/emergency`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ route: [], active: false })
+        });
+        setIsEmergencyActive(false);
+      } catch (e) {}
+    }
+  };
+
+  // Instant mode switch — updates path color the moment a checkbox is toggled
+  const handleModeChange = (newMode) => {
+    if (!activeRoutePath) return; // No route on screen, nothing to recolor
+    if (newMode === 'emergency') {
+      setIsEmergencyActive(true);
+      setSelectedChoice(null);
+    } else {
+      setIsEmergencyActive(false);
+      setSelectedChoice(newMode); // 'eco' or 'ai'
+    }
   };
 
   const filteredTrafficData = useMemo(() => {
@@ -261,6 +390,18 @@ const Dashboard = () => {
     return anomalies;
   }, [anomalies, activeRoutePath, activeArea]);
 
+  const isInWayOfEmergency = useMemo(() => {
+    // If there is no active emergency globally, or if *this* user is the emergency vehicle, return false.
+    if (!globalEmergencyRoute || globalEmergencyRoute.length === 0 || isEmergencyActive) return false;
+    
+    // Check if the user's active route intersects with the emergency route
+    if (activeRoutePath && activeRoutePath.length > 0) {
+      return activeRoutePath.some(node => globalEmergencyRoute.includes(node));
+    }
+    
+    return false;
+  }, [globalEmergencyRoute, activeRoutePath, isEmergencyActive]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '-1rem', gap: '0.5rem' }}>
@@ -288,21 +429,83 @@ const Dashboard = () => {
             Install App
           </button>
         ) : null}
+        
         <button
-          onClick={() => setIsLightTheme(!isLightTheme)}
+          onClick={() => setIsIncidentModalOpen(true)}
           style={{
             display: 'flex', alignItems: 'center', gap: '0.5rem',
             padding: '0.5rem 1rem', borderRadius: '8px',
-            background: 'var(--glass-bg)', color: 'var(--text-primary)',
-            border: '1px solid var(--glass-border)', cursor: 'pointer'
+            background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+            color: '#fff', fontWeight: 600,
+            border: 'none', cursor: 'pointer',
+            boxShadow: '0 2px 12px rgba(239, 68, 68, 0.3)',
+            transition: 'all 0.2s ease'
           }}
         >
-          {isLightTheme ? <Moon size={18} /> : <Sun size={18} />}
-          {isLightTheme ? 'Dark Mode' : 'Light Mode'}
+          <AlertTriangle size={18} />
+          Report Incident
         </button>
+
+        <ProfileMenu 
+          isLightTheme={isLightTheme} 
+          setIsLightTheme={setIsLightTheme} 
+          highGraphics={highGraphics} 
+          setHighGraphics={setHighGraphics}
+          onOpenPrefs={() => setIsPrefsOpen(true)}
+        />
       </div>
 
-      <RoutePanel onRouteSelect={handleRouteSelect} onAreaSelect={handleAreaSelect} onClear={handleClear} />
+      <PreferencesModal isOpen={isPrefsOpen} onClose={() => setIsPrefsOpen(false)} />
+      
+      <IncidentModal 
+        isOpen={isIncidentModalOpen} 
+        onClose={() => setIsIncidentModalOpen(false)} 
+        citiesDb={CITIES_DB}
+        apiUrl={API_URL}
+      />
+      
+      <EmergencyAuthModal
+        isOpen={isEmergencyAuthOpen}
+        onClose={() => setIsEmergencyAuthOpen(false)}
+        onAuthSuccess={async () => {
+          if (refreshUser) await refreshUser();
+          setToastMessage("✅ Emergency Access Granted!");
+          setTimeout(() => setToastMessage(''), 5000);
+        }}
+        apiUrl={API_URL}
+        token={token}
+      />
+
+      <button id="emergencyAuthBtn" style={{ display: 'none' }} onClick={() => setIsEmergencyAuthOpen(true)}></button>
+
+      {toastMessage && (
+        <div style={{
+          position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(239, 68, 68, 0.9)', color: 'white', padding: '12px 24px',
+          borderRadius: '30px', fontWeight: 600, zIndex: 9999, display: 'flex', alignItems: 'center', gap: '8px',
+          boxShadow: '0 4px 15px rgba(239, 68, 68, 0.4)', backdropFilter: 'blur(10px)',
+          animation: 'slideDown 0.3s ease-out'
+        }}>
+          <Bell size={18} />
+          {toastMessage}
+        </div>
+      )}
+
+      {isInWayOfEmergency && (
+        <div style={{
+          background: 'linear-gradient(135deg, #ef4444, #b91c1c)', color: 'white', padding: '1rem',
+          borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.75rem',
+          boxShadow: '0 4px 15px rgba(239, 68, 68, 0.4)', animation: 'pulse 2s infinite'
+        }}>
+          <AlertTriangle size={24} />
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>EMERGENCY VEHICLE APPROACHING</div>
+            <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>An active emergency service is approaching your current route. Please clear the way safely.</div>
+          </div>
+        </div>
+      )}
+
+      <RoutePanel onRouteSelect={handleRouteSelect} onAreaSelect={handleAreaSelect} onClear={handleClear} onModeChange={handleModeChange} />
 
       <div className="dashboard-grid">
         <div className="main-content">
@@ -313,7 +516,29 @@ const Dashboard = () => {
                 Live Network Map {activeArea && `- ${activeArea} Region`}
                 <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: isConnected ? '#4ade80' : '#f87171', marginLeft: '0.5rem', animation: isConnected ? 'none' : 'pulse 1.5s ease-in-out infinite' }} title={isConnected ? 'Live' : 'Reconnecting...'} />
               </h2>
-              {activeRoutePath && (
+              
+              {modelAccuracy && (
+                <div className="accuracy-badge" title="AI Prediction Accuracy (updated every 15m)">
+                  <div className="accuracy-icon">
+                    <Zap size={14} />
+                  </div>
+                  <div className="accuracy-text">
+                    <span className="label">AI Precision</span>
+                    <span className="value">{modelAccuracy.accuracy.toFixed(1)}%</span>
+                  </div>
+                </div>
+              )}
+              {isEmergencyActive && (
+                 <div style={{
+                    padding: '0.5rem 1rem', borderRadius: '8px',
+                    background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444',
+                    border: '1px solid rgba(239, 68, 68, 0.3)', fontWeight: 'bold',
+                    display: 'flex', alignItems: 'center', gap: '0.5rem'
+                 }}>
+                    🚨 EMERGENCY SERVICE ACTIVE - CLEARING PATH
+                 </div>
+              )}
+              {activeRoutePath && !isEmergencyActive && (
                 <button
                   onClick={openGoogleMaps}
                   style={{
@@ -331,7 +556,21 @@ const Dashboard = () => {
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem', marginTop: '-0.5rem' }}>
               Real-time visualization of city roads. Green paths mean clear traffic, yellow means moderate, and red means heavy congestion.
             </p>
-            <MapView trafficData={trafficData} activeRoutePath={activeRoutePath} shortestPath={shortestPath} routeInfo={routeInfo} allRoutes={allRoutes} activeArea={activeArea} isLightTheme={isLightTheme} routeEndpoints={routeEndpoints} />
+            <MapView 
+              trafficData={filteredTrafficData} 
+              activeRoutePath={activeRoutePath}
+              shortestPath={shortestPath}
+              routeInfo={routeInfo}
+              allRoutes={allRoutes}
+              activeArea={activeArea}
+              isLightTheme={isLightTheme}
+              routeEndpoints={routeEndpoints} 
+              highGraphics={highGraphics} 
+              isEmergencyActive={isEmergencyActive}
+              preferredMode={user?.preferences?.preferred_mode || 'fastest'}
+              activeAltIndex={activeAltIndex}
+              incidents={incidents}
+            />
           </div>
 
           {routeInfo && allRoutes.length > 0 && activeRoutePath && !activeArea && (
@@ -345,11 +584,11 @@ const Dashboard = () => {
               </p>
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem', maxHeight: '250px', overflowY: 'auto' }}>
                 {allRoutes.map((route, idx) => {
-                  const isSelected = activeRoutePath && activeRoutePath.length === route.path.length && activeRoutePath.every((v, i) => v === route.path[i]);
+                  const isSelected = activeAltIndex === route.alt_index;
                   return (
                     <button
                       key={idx}
-                      onClick={() => { setActiveRoutePath(route.path); setSelectedChoice(route.is_ai ? 'ai' : route.is_shortest ? 'shortest' : 'custom'); setFeedbackSent(false); }}
+                      onClick={() => { setActiveRoutePath(route.path); setActiveAltIndex(route.alt_index); setSelectedChoice(route.is_ai ? 'ai' : route.is_shortest ? 'shortest' : 'custom'); setFeedbackSent(false); }}
                       style={{
                         flex: '1 1 280px', padding: '0.85rem 1rem', borderRadius: '10px', cursor: 'pointer',
                         background: isSelected ? (route.is_ai ? 'rgba(34, 197, 94, 0.15)' : route.is_shortest ? 'rgba(96, 165, 250, 0.15)' : 'rgba(156, 163, 175, 0.15)') : 'var(--glass-bg)',
@@ -365,8 +604,8 @@ const Dashboard = () => {
                           {route.distance} km • ETA: {route.expected_time} mins
                         </span>
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                        {route.path.length} stops · {route.path.join(' → ')}
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        Direct Path · {route.path[0].split('(')[0].trim()} → {route.path[route.path.length - 1].split('(')[0].trim()}
                       </div>
                     </button>
                   );
@@ -504,6 +743,14 @@ const Dashboard = () => {
           <div className="glass-panel" style={{ flex: 1 }}>
             <LiveTicker trafficData={filteredTrafficData} />
           </div>
+
+          {user && (
+            <HistoryPanel onSelectRoute={(path) => {
+              if (path && path.length >= 2) {
+                handleRouteSelect([path[0], path[path.length - 1]]);
+              }
+            }} />
+          )}
         </div>
       </div>
     </div>

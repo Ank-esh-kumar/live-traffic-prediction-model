@@ -4,7 +4,15 @@ websockets
 networkx
 scikit-learn
 pandas
-numpy<2.0.0
+numpy
 python-dotenv
 tensorflow>=2.15.0
 pymongo
+python-jose[cryptography]
+bcrypt
+python-multipart
+email-validator
+torch>=2.0.0
+torch-geometric>=2.4.0
+httpx
+joblib

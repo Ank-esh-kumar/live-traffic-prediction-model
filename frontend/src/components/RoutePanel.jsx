@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { MapPin, Navigation, Plus, X, ArrowDown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { MapPin, Navigation, Plus, X, ArrowDown, Leaf, AlertTriangle, CloudRain, Lock } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const CITIES = [
   "India Gate (Delhi)", "Connaught Place (Delhi)", "Kashmiri Gate (Delhi)", "Anand Vihar (Delhi)",
@@ -50,12 +51,47 @@ const EXPLORE_REGIONS = {
 
 const MAX_STOPS = 5; // Maximum number of middle stops
 
-const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear }) => {
+const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear, onModeChange }) => {
+  const { user } = useAuth();
   const [mode, setMode] = useState('route'); // 'route' or 'area'
-  // waypoints[0] = start, waypoints[last] = end, everything in between = stops
   const [waypoints, setWaypoints] = useState(["", ""]);
   const [selectedCity, setSelectedCity] = useState("");
   const [selectedPlace, setSelectedPlace] = useState("");
+  const [routingMode, setRoutingMode] = useState('fast'); // 'fast' | 'eco'
+  const [isEmergency, setIsEmergency] = useState(false);
+  const [weatherData, setWeatherData] = useState(null);
+
+  // Fetch weather when city changes
+  useEffect(() => {
+    if (!selectedCity) {
+      setWeatherData(null);
+      return;
+    }
+    const fetchWeather = async () => {
+      // Find coordinates for the city to fetch weather
+      const cityNodeKey = Object.keys(CITIES).find(k => CITIES[k].includes(selectedCity));
+      // Just approximate based on region since it's an area
+      const coordsMap = {
+        "Dehradun": { lat: 30.3165, lon: 78.0322 },
+        "Delhi": { lat: 28.6139, lon: 77.2090 },
+        "Meerut": { lat: 28.9845, lon: 77.7064 },
+        "Muzaffarnagar": { lat: 29.4727, lon: 77.7085 },
+        "Roorkee": { lat: 29.8543, lon: 77.8880 },
+        "Haridwar": { lat: 29.9457, lon: 78.1642 },
+        "Rishikesh": { lat: 30.0869, lon: 78.2676 }
+      };
+      const coords = coordsMap[selectedCity];
+      if (!coords) return;
+      try {
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,precipitation,weather_code,wind_speed_10m&timezone=auto`);
+        const data = await res.json();
+        setWeatherData(data.current);
+      } catch (e) {
+        console.error("Failed to fetch weather", e);
+      }
+    };
+    fetchWeather();
+  }, [selectedCity]);
 
   const updateWaypoint = (index, value) => {
     const updated = [...waypoints];
@@ -105,7 +141,7 @@ const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear }) => {
       }
       // Filter out empty middle stops
       const validWaypoints = [start, ...waypoints.slice(1, -1).filter(w => w), end];
-      onRouteSelect(validWaypoints);
+      onRouteSelect(validWaypoints, { mode: routingMode, emergency: isEmergency });
     } else {
       if (!selectedCity) {
         alert("Please select a city to explore!");
@@ -126,11 +162,11 @@ const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear }) => {
         </h2>
         <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(0,0,0,0.1)', padding: '0.25rem', borderRadius: '8px' }}>
           <button
-            onClick={() => { setMode('route'); if(onClear) onClear(); }}
+            onClick={() => { setMode('route'); setWaypoints(["", ""]); setIsEmergency(false); setRoutingMode('fast'); if(onClear) onClear(); }}
             style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', cursor: 'pointer', background: mode === 'route' ? 'var(--accent-blue)' : 'transparent', color: mode === 'route' ? '#fff' : 'var(--text-secondary)' }}
           >A to B Route</button>
           <button
-            onClick={() => { setMode('area'); if(onClear) onClear(); }}
+            onClick={() => { setMode('area'); setWaypoints(["", ""]); setIsEmergency(false); setRoutingMode('fast'); if(onClear) onClear(); }}
             style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', cursor: 'pointer', background: mode === 'area' ? 'var(--accent-blue)' : 'transparent', color: mode === 'area' ? '#fff' : 'var(--text-secondary)' }}
           >Explore Area</button>
         </div>
@@ -255,13 +291,70 @@ const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear }) => {
 
               <button type="submit" style={{
                 padding: '0.6rem 1.5rem', borderRadius: '8px',
-                background: 'var(--accent-blue)', color: '#fff',
+                background: isEmergency ? '#ef4444' : (routingMode === 'eco' ? '#22c55e' : 'var(--accent-blue)'), 
+                color: '#fff',
                 border: 'none', cursor: 'pointer', fontWeight: 'bold',
                 fontSize: '0.9rem',
-                marginLeft: 'auto'
+                marginLeft: 'auto',
+                transition: 'background 0.3s'
               }}>
-                Find Shortest Route
+                {isEmergency ? 'Start Emergency Service' : 'Find Optimal Route'}
               </button>
+            </div>
+
+            {/* Advanced Routing Options */}
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
+               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: routingMode === 'eco' ? '#22c55e' : 'var(--text-primary)', transition: 'color 0.3s' }}>
+                 <input type="checkbox" checked={routingMode === 'eco'} onChange={(e) => {
+                   const newMode = e.target.checked ? 'eco' : 'fast';
+                   setRoutingMode(newMode);
+                   if (!isEmergency && onModeChange) {
+                     onModeChange(newMode === 'eco' ? 'eco' : 'ai');
+                   }
+                 }} style={{ cursor: 'pointer' }} />
+                 <Leaf size={16} color="#22c55e" />
+                 Eco-Route (Save Fuel)
+               </label>
+               
+               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: (user?.emergency_auth?.authorized) ? 'pointer' : 'not-allowed', fontSize: '0.9rem', color: isEmergency ? '#ef4444' : (user?.emergency_auth?.authorized ? 'var(--text-primary)' : 'var(--text-secondary)'), transition: 'color 0.3s', opacity: user?.emergency_auth?.authorized ? 1 : 0.6 }}>
+                   <input 
+                     type="checkbox" 
+                     checked={isEmergency} 
+                     disabled={!user || !user.emergency_auth?.authorized}
+                     onChange={(e) => {
+                       const checked = e.target.checked;
+                       setIsEmergency(checked);
+                       if (onModeChange) {
+                         onModeChange(checked ? 'emergency' : (routingMode === 'eco' ? 'eco' : 'ai'));
+                       }
+                     }} 
+                     style={{ cursor: (user?.emergency_auth?.authorized) ? 'pointer' : 'not-allowed' }} 
+                   />
+                   <AlertTriangle size={16} color={user?.emergency_auth?.authorized ? "#ef4444" : "#999"} />
+                   Emergency Service
+                 </label>
+                 
+                 {(!user || !user.emergency_auth?.authorized) && (
+                   <button
+                     type="button"
+                     onClick={() => {
+                       if (!user) {
+                         alert("Please login first to request emergency authorization.");
+                       } else {
+                         document.getElementById('emergencyAuthBtn').click(); // trigger modal from Dashboard
+                       }
+                     }}
+                     style={{
+                       background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)',
+                       color: '#ef4444', fontSize: '0.75rem', padding: '0.2rem 0.5rem', borderRadius: '4px',
+                       cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem'
+                     }}
+                   >
+                     <Lock size={12} /> Request Access
+                   </button>
+                 )}
+               </div>
             </div>
 
             {middleStopCount > 0 && (
@@ -271,42 +364,55 @@ const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear }) => {
             )}
           </>
         ) : (
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '150px' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Select City</label>
-              <select
-                value={selectedCity}
-                onChange={(e) => {
-                  setSelectedCity(e.target.value);
-                  setSelectedPlace(""); // Reset place when city changes
-                }}
-                style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'rgba(0,0,0,0.05)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)' }}
-              >
-                <option value="" disabled style={{color: '#999'}}>Select a city</option>
-                {Object.keys(EXPLORE_REGIONS).map(city => (
-                  <option key={city} value={city} style={{ color: '#000' }}>{city}</option>
-                ))}
-              </select>
-            </div>
+          <>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '150px' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Select City</label>
+                <select
+                  value={selectedCity}
+                  onChange={(e) => {
+                    setSelectedCity(e.target.value);
+                    setSelectedPlace(""); // Reset place when city changes
+                  }}
+                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'rgba(0,0,0,0.05)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)' }}
+                >
+                  <option value="" disabled style={{color: '#999'}}>Select a city</option>
+                  {Object.keys(EXPLORE_REGIONS).map(city => (
+                    <option key={city} value={city} style={{ color: '#000' }}>{city}</option>
+                  ))}
+                </select>
+              </div>
 
-            <div style={{ flex: 1, minWidth: '150px', opacity: selectedCity ? 1 : 0.5, pointerEvents: selectedCity ? 'auto' : 'none' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Specific Place (Optional)</label>
-              <select
-                value={selectedPlace}
-                onChange={(e) => setSelectedPlace(e.target.value)}
-                style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'rgba(0,0,0,0.05)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)' }}
-              >
-                <option value="">All of {selectedCity || 'City'}</option>
-                {selectedCity && EXPLORE_REGIONS[selectedCity].map(place => (
-                  <option key={place} value={place} style={{ color: '#000' }}>{place}</option>
-                ))}
-              </select>
-            </div>
+              <div style={{ flex: 1, minWidth: '150px', opacity: selectedCity ? 1 : 0.5, pointerEvents: selectedCity ? 'auto' : 'none' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Specific Place (Optional)</label>
+                <select
+                  value={selectedPlace}
+                  onChange={(e) => setSelectedPlace(e.target.value)}
+                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'rgba(0,0,0,0.05)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)' }}
+                >
+                  <option value="">All of {selectedCity || 'City'}</option>
+                  {selectedCity && EXPLORE_REGIONS[selectedCity].map(place => (
+                    <option key={place} value={place} style={{ color: '#000' }}>{place}</option>
+                  ))}
+                </select>
+              </div>
 
-            <button type="submit" style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', background: 'var(--accent-blue)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
-              Explore Area Roads
-            </button>
-          </div>
+              <button type="submit" style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', background: 'var(--accent-blue)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
+                Explore Area Roads
+              </button>
+            </div>
+            {weatherData && (
+               <div style={{ marginTop: '1.5rem', padding: '1rem', borderRadius: '8px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <CloudRain size={24} color="#0ea5e9" />
+                  <div>
+                     <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Current Weather in {selectedCity}</h4>
+                     <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        Temp: {weatherData.temperature_2m}°C | Wind: {weatherData.wind_speed_10m} km/h | Precipitation: {weatherData.precipitation} mm
+                     </p>
+                  </div>
+               </div>
+            )}
+          </>
         )}
       </form>
     </div>

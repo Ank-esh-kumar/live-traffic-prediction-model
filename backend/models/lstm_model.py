@@ -84,5 +84,41 @@ class RealLSTMPredictor:
             
         return predictions
 
+    def improve_model(self, history_data, actual_data):
+        """
+        Performs incremental learning (Online Learning).
+        history_data: dict of {node_id: [10 history values]}
+        actual_data: dict of {node_id: actual_density}
+        """
+        if not self.is_ready or not TF_AVAILABLE:
+            return False
+            
+        try:
+            X, y = [], []
+            for node_id, actual_density in actual_data.items():
+                if node_id in history_data:
+                    X.append(history_data[node_id])
+                    y.append(actual_density)
+            
+            if not X:
+                return False
+                
+            X = np.array(X).reshape(-1, self.seq_length, 1)
+            y = np.array(y).reshape(-1, 1)
+            
+            # Perform 1 epoch of training on this new "surprise" data
+            # Use a low learning rate for fine-tuning
+            self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001), loss='mse')
+            self.model.fit(X, y, epochs=2, verbose=0)
+            
+            # Optional: Save the fine-tuned model
+            # self.model.save(self.model_path.replace(".h5", ".keras"))
+            return True
+        except Exception as e:
+            print(f"⚠️ Error during model improvement: {e}")
+            return False
+
+# Factory object replacement so other files importing MockLSTMPredictor don't break
+
 # Factory object replacement so other files importing MockLSTMPredictor don't break
 MockLSTMPredictor = RealLSTMPredictor
