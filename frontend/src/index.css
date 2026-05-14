@@ -703,6 +703,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+  flex: 1; /* Allow stretching/shrinking */
 }
 
 .route-arrow {
@@ -1066,6 +1067,7 @@ body {
     border-radius: 16px;
     width: 100%;
     box-sizing: border-box;
+    overflow: hidden; /* Prevent child spill */
   }
 
   .section-title {
@@ -1096,6 +1098,30 @@ body {
   .route-card {
     padding: 1rem;
     border-radius: 14px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .route-stats-row {
+    display: grid !important;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    align-items: center;
+    gap: 0;
+    width: 100%;
+  }
+
+  .route-stat {
+    min-width: 0;
+  }
+
+  .route-stat-value {
+    font-size: 0.95rem; /* Smaller for mobile */
+  }
+
+  .route-stat-label {
+    font-size: 0.6rem;
   }
 
   .compare-card {
