@@ -55,10 +55,22 @@ const TrafficChart = ({ trafficData, predictions }) => {
     return Object.keys(trafficData).sort();
   }, [trafficData]);
 
-  // Auto-select first 5 nodes if none selected
+  // Auto-select nodes when the available list changes (filtering by route or area)
   useEffect(() => {
-    if (selectedNodes.length === 0 && allNodes.length > 0) {
-      setSelectedNodes(allNodes.slice(0, 5));
+    if (allNodes.length === 0) {
+      setSelectedNodes([]);
+      return;
+    }
+
+    // Filter out any currently selected nodes that are no longer in the available list
+    const stillValid = selectedNodes.filter(node => allNodes.includes(node));
+    
+    // If we have no valid nodes selected, or the list changed significantly (e.g. new exploration)
+    // we take the first few from the new list.
+    if (stillValid.length === 0) {
+      setSelectedNodes(allNodes.slice(0, 8)); // Show up to 8 nodes by default
+    } else {
+      setSelectedNodes(stillValid);
     }
   }, [allNodes]);
 

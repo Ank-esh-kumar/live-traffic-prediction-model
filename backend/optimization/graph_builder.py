@@ -67,6 +67,7 @@ def _generate_synthetic_graph():
         "Partapur (Meerut)": {"lat": 28.9186, "lng": 77.6599, "is_arterial": True},
         "Meerut Bypass": {"lat": 28.9845, "lng": 77.7064, "is_arterial": True},
         "Meerut City Center": {"lat": 28.9845, "lng": 77.7364, "is_arterial": False}, # Parallel
+        "Begampul (Meerut)": {"lat": 29.0064, "lng": 77.7029, "is_arterial": True},
         
         # Muzaffarnagar Region
         "Khatauli Bypass (MZN)": {"lat": 29.2801, "lng": 77.7212, "is_arterial": True},
@@ -80,6 +81,7 @@ def _generate_synthetic_graph():
         
         # Dehradun Region
         "ISBT Dehradun": {"lat": 30.2858, "lng": 77.9959, "is_arterial": True},
+        "Clement Town (Dehradun)": {"lat": 30.2650, "lng": 78.0010, "is_arterial": False},
         "Graphic Era University (Dehradun)": {"lat": 30.2678, "lng": 77.9942, "is_arterial": False},
         "Niranjanpur Mandi (Dehradun)": {"lat": 30.3060, "lng": 78.0040, "is_arterial": True},
         "Kargi Chowk (Dehradun)": {"lat": 30.2905, "lng": 78.0195, "is_arterial": True},
@@ -137,11 +139,11 @@ def _generate_synthetic_graph():
         "Apollo Hospital (Delhi)", "Parliament Street Police Station (Delhi)", "Hauz Khas Police Station (Delhi)",
         "Connaught Place Police Station (Delhi)", "Connaught Circus Fire Station (Delhi)", "Safdarjung Fire Station (Delhi)"
     ]
-    meerut_nodes = ["Partapur (Meerut)", "Meerut Bypass", "Meerut City Center"]
+    meerut_nodes = ["Partapur (Meerut)", "Meerut Bypass", "Meerut City Center", "Begampul (Meerut)"]
     mzn_nodes = ["Khatauli Bypass (MZN)", "Mansurpur (MZN)", "Muzaffarnagar Toll", "Muzaffarnagar City"]
     roorkee_nodes = ["Roorkee Bypass", "IIT Roorkee"]
     dehradun_nodes = [
-        "ISBT Dehradun", "Graphic Era University (Dehradun)", "Niranjanpur Mandi (Dehradun)",
+        "ISBT Dehradun", "Clement Town (Dehradun)", "Graphic Era University (Dehradun)", "Niranjanpur Mandi (Dehradun)",
         "Kargi Chowk (Dehradun)", "Saharanpur Chowk (Dehradun)", "Prince Chowk (Dehradun)",
         "Clock Tower (Dehradun)", "Bindal Pull (Dehradun)", "Ballupur Chowk (Dehradun)",
         "GMS Road (Dehradun)", "Vasant Vihar (Dehradun)", "Uttaranchal University (Dehradun)",

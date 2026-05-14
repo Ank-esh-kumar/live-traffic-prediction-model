@@ -224,11 +224,15 @@ def calculate_optimal_route(start_node, end_node, current_traffic, mode="fast"):
     # Assign an alternate index so the frontend can ask OSRM for native alternative routes
     # without passing intermediate waypoints (which caused the zigzag deviations).
     for idx, r in enumerate(all_routes):
+        r["full_path"] = list(r["path"]) # Keep full path for UI display
         if len(r["path"]) > 1:
             r["path"] = [r["path"][0], r["path"][-1]]
         r["alt_index"] = idx
+        # Add a synthetic cost based on distance and time for comparison
+        r["cost"] = round(r["distance"] * 0.5 + (r["expected_time"] / 2), 1)
 
     clean_ai_path = [ai_path[0], ai_path[-1]] if len(ai_path) > 1 else ai_path
+    full_ai_path = list(ai_path)
     
     # Find the alt_index for the primary AI path
     primary_alt_index = 0
@@ -240,11 +244,13 @@ def calculate_optimal_route(start_node, end_node, current_traffic, mode="fast"):
     result = {
         "path": clean_ai_path,
         "ai_path": clean_ai_path,
+        "full_ai_path": full_ai_path,
         "alt_index": primary_alt_index,
         "ai_distance": round(ai_distance, 2),
         "ai_time": ai_time,
         "ai_cost": round(ai_cost, 2),
-        "shortest_path": clean_ai_path,  # Use clean path
+        "shortest_path": clean_ai_path,
+        "full_shortest_path": list(shortest_path),
         "shortest_cost": round(shortest_cost, 2),
         "shortest_time": shortest_time,
         "all_routes": all_routes,
@@ -292,9 +298,10 @@ def calculate_multi_stop_route(waypoints, current_traffic, mode="fast"):
         "ai_time": direct["ai_time"],
         "ai_cost": direct["ai_cost"],
         "shortest_path": direct["shortest_path"],
-        "shortest_cost": direct["shortest_cost"],
         "shortest_time": direct["shortest_time"],
         "all_routes": direct["all_routes"],
+        "full_ai_path": direct["full_ai_path"],
+        "full_shortest_path": direct["full_shortest_path"],
         "path": direct["ai_path"],  # Backward compat
     }
     
@@ -303,8 +310,11 @@ def calculate_multi_stop_route(waypoints, current_traffic, mode="fast"):
     
     if len(middle_stops) > 0:
         legs = []
-        via_ai_path = []
-        via_shortest_path = []
+        legs = []
+        via_ai_path = [] # Truncated
+        via_full_ai_path = [] # Full node sequence
+        via_shortest_path = [] # Truncated
+        via_full_shortest_path = [] # Full node sequence
         via_ai_distance = 0
         via_ai_time = 0
         via_ai_cost = 0
@@ -333,13 +343,17 @@ def calculate_multi_stop_route(waypoints, current_traffic, mode="fast"):
             # Stitch paths (avoid duplicating the joining node)
             if len(via_ai_path) == 0:
                 via_ai_path = list(seg["ai_path"])
+                via_full_ai_path = list(seg["full_ai_path"])
             else:
                 via_ai_path.extend(seg["ai_path"][1:])
+                via_full_ai_path.extend(seg["full_ai_path"][1:])
             
             if len(via_shortest_path) == 0:
                 via_shortest_path = list(seg["shortest_path"])
+                via_full_shortest_path = list(seg["full_shortest_path"])
             else:
                 via_shortest_path.extend(seg["shortest_path"][1:])
+                via_full_shortest_path.extend(seg["full_shortest_path"][1:])
             
             via_ai_distance += seg.get("ai_distance", 0)
             via_ai_time += seg.get("ai_time", 0)
@@ -362,10 +376,12 @@ def calculate_multi_stop_route(waypoints, current_traffic, mode="fast"):
         if not has_error and len(via_ai_path) > 0:
             result["via_route"] = {
                 "ai_path": via_ai_path,
+                "full_ai_path": via_full_ai_path,
                 "ai_distance": round(via_ai_distance, 2),
                 "ai_time": via_ai_time,
                 "ai_cost": round(via_ai_cost, 2),
                 "shortest_path": via_shortest_path,
+                "full_shortest_path": via_full_shortest_path,
                 "shortest_cost": round(via_shortest_cost, 2),
                 "shortest_time": via_shortest_time,
                 "legs": legs,

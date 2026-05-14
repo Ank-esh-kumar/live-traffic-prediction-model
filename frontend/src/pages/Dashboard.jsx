@@ -35,6 +35,7 @@ const CITIES_DB = {
   "AIIMS Rishikesh": { lat: 30.0763, lng: 78.2934 },
   "Ram Jhula (Rishikesh)": { lat: 30.1130, lng: 78.3129 },
   "ISBT Dehradun": { lat: 30.2858, lng: 77.9959 },
+  "Clement Town (Dehradun)": { lat: 30.2650, lng: 78.0010 },
   "Graphic Era University (Dehradun)": { lat: 30.2678, lng: 77.9942 },
   "Niranjanpur Mandi (Dehradun)": { lat: 30.3060, lng: 78.0040 },
   "Kargi Chowk (Dehradun)": { lat: 30.2905, lng: 78.0195 },
@@ -136,10 +137,10 @@ const Dashboard = ({ isLightTheme, highGraphics }) => {
   const handleRouteSelect = async (waypoints, options = { mode: 'fast', emergency: false }) => {
     setActiveArea(null); setSelectedChoice(null); setFeedbackSent(false); setViaRouteInfo(null);
     if (isEmergencyActive) {
-      await fetch(`${API_URL}/api/route/emergency`, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
-        body: JSON.stringify({ route: [], active: false }) 
+      await fetch(`${API_URL}/api/route/emergency`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ route: [], active: false })
       });
       setIsEmergencyActive(false);
     }
@@ -151,7 +152,13 @@ const Dashboard = ({ isLightTheme, highGraphics }) => {
         const finalPath = hasStops ? data.via_route.ai_path : data.ai_path;
         setActiveRoutePath(finalPath);
         setShortestPath(hasStops ? data.via_route.shortest_path : data.shortest_path);
-        setRouteInfo({ ai_distance: data.ai_distance, ai_cost: data.ai_cost, ai_time: data.ai_time, shortest_cost: data.shortest_cost, shortest_time: data.shortest_time, originalAiPath: data.ai_path });
+        setRouteInfo({
+          ai_distance: data.ai_distance,
+          ai_time: data.ai_time,
+          shortest_time: data.shortest_time,
+          originalAiPath: data.full_ai_path || data.ai_path,
+          fullShortestPath: data.full_shortest_path || data.shortest_path
+        });
         setAllRoutes(data.all_routes || []);
         setActiveAltIndex(data.alt_index || 0);
         setRouteEndpoints(waypoints);
@@ -169,9 +176,9 @@ const Dashboard = ({ isLightTheme, highGraphics }) => {
   const switchToPath = (choice) => {
     setSelectedChoice(choice);
     setFeedbackSent(false);
-    if (choice === 'shortest' && shortestPath) setActiveRoutePath(shortestPath);
+    if (choice === 'shortest' && routeInfo?.fullShortestPath) setActiveRoutePath(routeInfo.fullShortestPath);
     else if (choice === 'ai' && routeInfo?.originalAiPath) setActiveRoutePath(routeInfo.originalAiPath);
-    else if (choice === 'via_stops' && viaRouteInfo?.ai_path) setActiveRoutePath(viaRouteInfo.ai_path);
+    else if (choice === 'via_stops' && viaRouteInfo?.full_ai_path) setActiveRoutePath(viaRouteInfo.full_ai_path);
   };
 
   const submitFeedback = async () => {
@@ -298,7 +305,7 @@ const Dashboard = ({ isLightTheme, highGraphics }) => {
               <div style={{ fontSize: '0.9rem', opacity: 0.9, marginTop: '2px' }}>Your route is currently prioritized. Cross-traffic is halted. Please end the service as soon as you reach your destination.</div>
             </div>
           </div>
-          <button 
+          <button
             onClick={endEmergencyService}
             style={{ padding: '0.75rem 1.5rem', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 12px rgba(239,68,68,0.4)', flexShrink: 0 }}
           >
@@ -348,11 +355,15 @@ const Dashboard = ({ isLightTheme, highGraphics }) => {
               <div className="route-grid">
                 {allRoutes.map((route, idx) => {
                   const isSelected = activeAltIndex === route.alt_index;
-                  const hops = route.path?.length || 0;
-                  const startName = route.path?.[0]?.split('(')[0]?.trim() || '—';
-                  const endName = route.path?.[route.path.length - 1]?.split('(')[0]?.trim() || '—';
+                  const fullPath = route.full_path || route.path || [];
+                  const hops = fullPath.length;
+                  const startName = fullPath[0]?.split('(')[0]?.trim() || '—';
+                  const endName = fullPath[fullPath.length - 1]?.split('(')[0]?.trim() || '—';
+                  const viaNode = hops > 2 ? fullPath[Math.floor(hops / 2)]?.split('(')[0]?.trim() : null;
+
                   const congestionLevel = route.expected_time > 40 ? 'high' : route.expected_time > 20 ? 'moderate' : 'low';
                   const congestionColor = congestionLevel === 'high' ? 'var(--danger)' : congestionLevel === 'moderate' ? 'var(--accent-orange)' : 'var(--accent-green)';
+                  const sustainability = Math.max(60, 100 - (route.expected_time / 2)).toFixed(0);
 
                   return (
                     <button
@@ -362,8 +373,8 @@ const Dashboard = ({ isLightTheme, highGraphics }) => {
                     >
                       {/* Top: Type badge + Selected indicator */}
                       <div className="route-card-top">
-                        <span className="route-type-badge" style={{ background: route.is_ai ? 'rgba(52, 199, 89, 0.12)' : 'rgba(10, 132, 255, 0.12)', color: route.is_ai ? 'var(--accent-green)' : 'var(--accent-blue)' }}>
-                          {route.is_ai ? '🤖 AI Predicted' : '📐 Shortest'}
+                        <span className="route-type-badge" style={{ background: route.is_ai ? 'rgba(52, 199, 89, 0.12)' : route.is_shortest ? 'rgba(10, 132, 255, 0.12)' : 'rgba(255, 159, 10, 0.12)', color: route.is_ai ? 'var(--accent-green)' : route.is_shortest ? 'var(--accent-blue)' : 'var(--accent-orange)' }}>
+                          {route.is_ai ? 'AI Predicted Route' : route.is_shortest ? 'Shortest Route' : 'Alternate Route'}
                         </span>
                         {isSelected && <span className="route-selected-dot" />}
                       </div>
@@ -372,6 +383,7 @@ const Dashboard = ({ isLightTheme, highGraphics }) => {
                       <div className="route-path-preview">
                         <span className="route-endpoint">{startName}</span>
                         <span className="route-arrow">→</span>
+                        {viaNode && <><span className="route-endpoint" style={{ opacity: 0.7, fontSize: '0.8rem' }}>{viaNode}</span><span className="route-arrow">→</span></>}
                         <span className="route-endpoint">{endName}</span>
                       </div>
 
@@ -388,8 +400,8 @@ const Dashboard = ({ isLightTheme, highGraphics }) => {
                         </div>
                         <div className="route-stat-divider" />
                         <div className="route-stat">
-                          <span className="route-stat-value">{hops}</span>
-                          <span className="route-stat-label">hops</span>
+                          <span className="route-stat-value">{sustainability}%</span>
+                          <span className="route-stat-label">Eco-Score</span>
                         </div>
                       </div>
 
@@ -448,12 +460,12 @@ const Dashboard = ({ isLightTheme, highGraphics }) => {
                       <span className="compare-stat-label">min</span>
                     </div>
                     <div className="compare-stat-item">
-                      <span className="compare-stat-value">{routeInfo.ai_cost?.toFixed(1) || '—'}</span>
-                      <span className="compare-stat-label">cost</span>
+                      <span className="compare-stat-value">{(100 - routeInfo.ai_time / 3).toFixed(0)}%</span>
+                      <span className="compare-stat-label">Sustainability</span>
                     </div>
                     <div className="compare-stat-item">
-                      <span className="compare-stat-value">{routeInfo.originalAiPath?.length || '—'}</span>
-                      <span className="compare-stat-label">nodes</span>
+                      <span className="compare-stat-value">A+</span>
+                      <span className="compare-stat-label">Safety Index</span>
                     </div>
                   </div>
                 </button>
@@ -478,12 +490,12 @@ const Dashboard = ({ isLightTheme, highGraphics }) => {
                       <span className="compare-stat-label">min</span>
                     </div>
                     <div className="compare-stat-item">
-                      <span className="compare-stat-value">{viaRouteInfo.ai_cost?.toFixed(1) || '—'}</span>
-                      <span className="compare-stat-label">cost</span>
+                      <span className="compare-stat-value">{(100 - viaRouteInfo.ai_time / 3).toFixed(0)}%</span>
+                      <span className="compare-stat-label">Sustainability</span>
                     </div>
                     <div className="compare-stat-item">
-                      <span className="compare-stat-value">{viaRouteInfo.ai_path?.length || '—'}</span>
-                      <span className="compare-stat-label">nodes</span>
+                      <span className="compare-stat-value">A</span>
+                      <span className="compare-stat-label">Safety Index</span>
                     </div>
                   </div>
 

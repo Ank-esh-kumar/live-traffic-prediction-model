@@ -36,6 +36,7 @@ const CITIES = [
   { "id": "AIIMS Rishikesh", "lat": 30.0763, "lng": 78.2934 },
   { "id": "Ram Jhula (Rishikesh)", "lat": 30.1130, "lng": 78.3129 },
   { "id": "ISBT Dehradun", "lat": 30.2858, "lng": 77.9959 },
+  { "id": "Clement Town (Dehradun)", "lat": 30.2650, "lng": 78.0010 },
   { "id": "Graphic Era University (Dehradun)", "lat": 30.2678, "lng": 77.9942 },
   { "id": "Niranjanpur Mandi (Dehradun)", "lat": 30.3060, "lng": 78.0040 },
   { "id": "Kargi Chowk (Dehradun)", "lat": 30.2905, "lng": 78.0195 },
@@ -54,7 +55,25 @@ const CITIES = [
   { "id": "Raipur Stadium (Dehradun)", "lat": 30.3142, "lng": 78.0903 },
   { "id": "Rajpur Road (Dehradun)", "lat": 30.3421, "lng": 78.0558 },
   { "id": "Jakhan (Dehradun)", "lat": 30.3640, "lng": 78.0750 },
-  { "id": "Sahastradhara Crossing (Dehradun)", "lat": 30.3550, "lng": 78.0710 }
+  { "id": "Sahastradhara Crossing (Dehradun)", "lat": 30.3550, "lng": 78.0710 },
+  { "id": "Doon Hospital (Dehradun)", "lat": 30.3180, "lng": 78.0350 },
+  { "id": "Max Super Speciality Hospital (Dehradun)", "lat": 30.3600, "lng": 78.0800 },
+  { "id": "Synergy Hospital (Dehradun)", "lat": 30.3300, "lng": 77.9900 },
+  { "id": "Kotwali Dehradun", "lat": 30.3165, "lng": 78.0322 },
+  { "id": "Prem Nagar Police Station (Dehradun)", "lat": 30.3340, "lng": 77.9650 },
+  { "id": "Rajpur Police Station (Dehradun)", "lat": 30.3750, "lng": 78.0850 },
+  { "id": "Fire Station Dehradun", "lat": 30.3200, "lng": 78.0400 },
+  { "id": "Mussoorie (Dehradun)", "lat": 30.4598, "lng": 78.0644 },
+  { "id": "Chakrata (Dehradun)", "lat": 30.7016, "lng": 77.8696 },
+  { "id": "Selaqui (Dehradun)", "lat": 30.3701, "lng": 77.8540 },
+  { "id": "AIIMS New Delhi", "lat": 28.5659, "lng": 77.2089 },
+  { "id": "Safdarjung Hospital (Delhi)", "lat": 28.5680, "lng": 77.2060 },
+  { "id": "Apollo Hospital (Delhi)", "lat": 28.5320, "lng": 77.2880 },
+  { "id": "Parliament Street Police Station (Delhi)", "lat": 28.6250, "lng": 77.2100 },
+  { "id": "Hauz Khas Police Station (Delhi)", "lat": 28.5450, "lng": 77.2050 },
+  { "id": "Connaught Place Police Station (Delhi)", "lat": 28.6320, "lng": 77.2180 },
+  { "id": "Connaught Circus Fire Station (Delhi)", "lat": 28.6330, "lng": 77.2200 },
+  { "id": "Safdarjung Fire Station (Delhi)", "lat": 28.5600, "lng": 77.2000 }
 ];
 
 const MapBoundsController = ({ activeArea, activeRoutePath, shortestPath, cities, areaBoundary, setZoomLevel }) => {

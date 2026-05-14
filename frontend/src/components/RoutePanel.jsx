@@ -14,7 +14,7 @@ const CITIES = [
   "Roorkee Bypass", "IIT Roorkee",
   "Har Ki Pauri (Haridwar)", "Shantikunj (Haridwar)", "Haridwar Railway Station", "Chandi Devi (Haridwar)",
   "Triveni Ghat (Rishikesh)", "Laxman Jhula (Rishikesh)", "AIIMS Rishikesh", "Ram Jhula (Rishikesh)",
-  "ISBT Dehradun", "Clement Town (Dehradun)", "Niranjanpur Mandi (Dehradun)", "Kargi Chowk (Dehradun)",
+  "ISBT Dehradun", "Clement Town (Dehradun)", "Graphic Era University (Dehradun)", "Niranjanpur Mandi (Dehradun)", "Kargi Chowk (Dehradun)",
   "Saharanpur Chowk (Dehradun)", "Prince Chowk (Dehradun)", "Clock Tower (Dehradun)",
   "Bindal Pull (Dehradun)", "Ballupur Chowk (Dehradun)", "GMS Road (Dehradun)",
   "Vasant Vihar (Dehradun)", "Uttaranchal University (Dehradun)", "Shivalik College (Dehradun)", "Dalanwala (Dehradun)",
@@ -28,7 +28,7 @@ const CITIES = [
 const EXPLORE_REGIONS = {
   "Dehradun": [
     "Rajpur Road", "ISBT Dehradun", "Clock Tower", "Saharanpur Chowk", 
-    "Vasant Vihar", "Uttaranchal University", "Shivalik College", "Raipur Stadium", "Graphic Era University",
+    "Vasant Vihar", "Uttaranchal University", "Shivalik College", "Raipur Stadium", "Graphic Era University (Dehradun)",
     "Prince Chowk", "Dalanwala", "Doon Hospital", "Max Super Speciality Hospital", "Synergy Hospital",
     "Kotwali", "Prem Nagar Police Station", "Rajpur Police Station", "Fire Station Dehradun",
     "Mussoorie", "Chakrata", "Selaqui"
