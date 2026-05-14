@@ -75,7 +75,8 @@ async def register(user: UserCreate):
         "emergency_auth": {
             "authorized": False,
             "role": "user",
-            "expires_at": None
+            "expires_at": None,
+            "usage_history": []
         }
     }
     new_user = create_user(user_dict)
@@ -119,17 +120,39 @@ class EmergencyAuthRequest(BaseModel):
 async def request_emergency_access(request: EmergencyAuthRequest, current_user: dict = Depends(get_current_user)):
     from database import update_emergency_auth
     
-    auth_data = {
-        "authorized": True,
-        "role": request.reason
-    }
+    auth_data = current_user.get("emergency_auth", {})
+    usage_history = auth_data.get("usage_history", [])
+    now = datetime.utcnow()
     
     if request.reason == "medical":
+        # Keep only history from the last 24 hours
+        usage_history = [t for t in usage_history if now - datetime.fromisoformat(t) < timedelta(hours=24)]
+        
+        # Limit 1: Max 3 times a day
+        if len(usage_history) >= 3:
+            raise HTTPException(status_code=429, detail="Daily limit reached. You can only use emergency access 3 times a day.")
+            
+        # Limit 2: Cooldown of 2 hours
+        if usage_history:
+            last_used = datetime.fromisoformat(usage_history[-1])
+            if now - last_used < timedelta(hours=2):
+                remaining = timedelta(hours=2) - (now - last_used)
+                mins = int(remaining.total_seconds() // 60)
+                raise HTTPException(status_code=429, detail=f"Cooldown active. Please wait {mins} minutes before requesting again.")
+        
         # Grant 2 hours of access
-        expire = datetime.utcnow() + timedelta(hours=2)
+        expire = now + timedelta(hours=2)
+        auth_data["authorized"] = True
+        auth_data["role"] = request.reason
         auth_data["expires_at"] = expire.isoformat()
+        
+        # Log this usage
+        usage_history.append(now.isoformat())
+        auth_data["usage_history"] = usage_history
     else:
         # Permanent access for police/ambulance/fire
+        auth_data["authorized"] = True
+        auth_data["role"] = request.reason
         auth_data["expires_at"] = None
         
     success = update_emergency_auth(current_user["email"], auth_data)

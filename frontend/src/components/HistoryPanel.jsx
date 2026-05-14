@@ -7,7 +7,7 @@ const HistoryPanel = ({ onSelectRoute }) => {
 
   if (!user || !user.history || user.history.length === 0) {
     return (
-      <div className="glass-panel" style={{ textAlign: 'center', padding: '2rem' }}>
+      <div style={{ textAlign: 'center', padding: '2rem' }}>
         <History size={32} style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }} />
         <p style={{ color: 'var(--text-secondary)' }}>No route history yet.</p>
         <small style={{ color: 'var(--text-secondary)', opacity: 0.7 }}>Saved routes will appear here.</small>
@@ -16,7 +16,7 @@ const HistoryPanel = ({ onSelectRoute }) => {
   }
 
   return (
-    <div className="glass-panel">
+    <div>
       <h2 className="section-title">
         <History size={20} />
         Recent Routes

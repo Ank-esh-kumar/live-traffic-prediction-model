@@ -93,7 +93,9 @@ const MapBoundsController = ({ activeArea, activeRoutePath, shortestPath, cities
     if (targetNodes.length > 0) {
       const bounds = L.latLngBounds(targetNodes.map(c => [c.lat, c.lng]));
       setTimeout(() => {
-        map.fitBounds(bounds, { padding: [50, 50], animate: true, maxZoom: 13 });
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [50, 50], animate: true, maxZoom: 13 });
+        }
       }, 300);
     }
   }, [activeArea, activeRoutePath, shortestPath, map, cities, areaBoundary]);

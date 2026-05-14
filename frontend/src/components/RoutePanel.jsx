@@ -6,7 +6,9 @@ const CITIES = [
   "India Gate (Delhi)", "Connaught Place (Delhi)", "Kashmiri Gate (Delhi)", "Anand Vihar (Delhi)",
   "Rajiv Chowk (Delhi)", "Hauz Khas (Delhi)", "Botanical Garden (Delhi)", "Chandni Chowk (Delhi)",
   "Karol Bagh (Delhi)", "Lajpat Nagar (Delhi)", "Dhaula Kuan (Delhi)", "INA (Delhi)",
-  "Dwarka Sector 21 (Delhi)", "Kalkaji Mandir (Delhi)",
+  "Dwarka Sector 21 (Delhi)", "Kalkaji Mandir (Delhi)", "AIIMS New Delhi", "Safdarjung Hospital (Delhi)",
+  "Apollo Hospital (Delhi)", "Parliament Street Police Station (Delhi)", "Hauz Khas Police Station (Delhi)",
+  "Connaught Place Police Station (Delhi)", "Connaught Circus Fire Station (Delhi)", "Safdarjung Fire Station (Delhi)",
   "Partapur (Meerut)", "Meerut Bypass", "Meerut City Center", "Begampul (Meerut)",
   "Khatauli Bypass (MZN)", "Mansurpur (MZN)", "Muzaffarnagar Toll", "Muzaffarnagar City",
   "Roorkee Bypass", "IIT Roorkee",
@@ -17,14 +19,19 @@ const CITIES = [
   "Bindal Pull (Dehradun)", "Ballupur Chowk (Dehradun)", "GMS Road (Dehradun)",
   "Vasant Vihar (Dehradun)", "Uttaranchal University (Dehradun)", "Shivalik College (Dehradun)", "Dalanwala (Dehradun)",
   "Rispana Pull (Dehradun)", "Jogiwala (Dehradun)", "Raipur Stadium (Dehradun)",
-  "Rajpur Road (Dehradun)", "Jakhan (Dehradun)", "Sahastradhara Crossing (Dehradun)"
+  "Rajpur Road (Dehradun)", "Jakhan (Dehradun)", "Sahastradhara Crossing (Dehradun)",
+  "Doon Hospital (Dehradun)", "Max Super Speciality Hospital (Dehradun)", "Synergy Hospital (Dehradun)",
+  "Kotwali Dehradun", "Prem Nagar Police Station (Dehradun)", "Rajpur Police Station (Dehradun)",
+  "Fire Station Dehradun", "Mussoorie (Dehradun)", "Chakrata (Dehradun)", "Selaqui (Dehradun)"
 ];
 
 const EXPLORE_REGIONS = {
   "Dehradun": [
     "Rajpur Road", "ISBT Dehradun", "Clock Tower", "Saharanpur Chowk", 
     "Vasant Vihar", "Uttaranchal University", "Shivalik College", "Raipur Stadium", "Graphic Era University",
-    "Prince Chowk", "Dalanwala"
+    "Prince Chowk", "Dalanwala", "Doon Hospital", "Max Super Speciality Hospital", "Synergy Hospital",
+    "Kotwali", "Prem Nagar Police Station", "Rajpur Police Station", "Fire Station Dehradun",
+    "Mussoorie", "Chakrata", "Selaqui"
   ],
   "Rishikesh": [
     "Triveni Ghat", "Laxman Jhula", "AIIMS Rishikesh", "Ram Jhula"
@@ -36,7 +43,9 @@ const EXPLORE_REGIONS = {
     "India Gate", "Connaught Place", "Kashmiri Gate", "Anand Vihar",
     "Rajiv Chowk", "Hauz Khas", "Botanical Garden", "Chandni Chowk",
     "Karol Bagh", "Lajpat Nagar", "Dhaula Kuan", "INA",
-    "Dwarka Sector 21", "Kalkaji Mandir"
+    "Dwarka Sector 21", "Kalkaji Mandir", "AIIMS New Delhi", "Safdarjung Hospital",
+    "Apollo Hospital", "Parliament Street Police Station", "Hauz Khas Police Station",
+    "Connaught Place Police Station", "Connaught Circus Fire Station", "Safdarjung Fire Station"
   ],
   "Meerut": [
     "Partapur", "Meerut Bypass", "Meerut City Center", "Begampul"
@@ -51,7 +60,7 @@ const EXPLORE_REGIONS = {
 
 const MAX_STOPS = 5; // Maximum number of middle stops
 
-const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear, onModeChange }) => {
+const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear, onModeChange, onOpenEmergencyAuth, isEmergencyActive }) => {
   const { user } = useAuth();
   const [mode, setMode] = useState('route'); // 'route' or 'area'
   const [waypoints, setWaypoints] = useState(["", ""]);
@@ -59,6 +68,13 @@ const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear, onModeChange }) => {
   const [selectedPlace, setSelectedPlace] = useState("");
   const [routingMode, setRoutingMode] = useState('fast'); // 'fast' | 'eco'
   const [isEmergency, setIsEmergency] = useState(false);
+
+  // Sync internal state with external dashboard state (e.g. when "End Emergency" is clicked)
+  React.useEffect(() => {
+    if (isEmergencyActive !== undefined) {
+      setIsEmergency(isEmergencyActive);
+    }
+  }, [isEmergencyActive]);
   const [weatherData, setWeatherData] = useState(null);
 
   // Fetch weather when city changes
@@ -139,6 +155,28 @@ const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear, onModeChange }) => {
         alert("Start and end locations cannot be the same!");
         return;
       }
+
+      // If normal user (medical pass) requests emergency, start or destination MUST be a hospital or police station
+      if (isEmergency && user?.emergency_auth?.role === 'medical') {
+        const startLower = start.toLowerCase();
+        const destLower = end.toLowerCase();
+        
+        const isMedicalOrPolice = (str) => 
+          str.includes('hospital') || 
+          str.includes('police') || 
+          str.includes('kotwali') || 
+          str.includes('aiims');
+
+        const isValidEmergencyRoute = isMedicalOrPolice(startLower) || isMedicalOrPolice(destLower);
+
+        if (!isValidEmergencyRoute) {
+          alert("⚠️ Emergency Service Warning\n\nFor normal users, emergency routing is strictly restricted to medical or police emergencies. Your initial or final destination must be a valid Hospital or Police Station.\n\nEmergency priority has been disabled.");
+          setIsEmergency(false);
+          if (onModeChange) onModeChange('ai'); // Revert to AI
+          return;
+        }
+      }
+
       // Filter out empty middle stops
       const validWaypoints = [start, ...waypoints.slice(1, -1).filter(w => w), end];
       onRouteSelect(validWaypoints, { mode: routingMode, emergency: isEmergency });
@@ -153,9 +191,24 @@ const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear, onModeChange }) => {
 
   const middleStopCount = waypoints.length - 2;
 
+  const getWeatherClass = (code) => {
+    if (code === undefined || code === null) return '';
+    if (code === 0 || code === 1) return 'weather-clear';
+    if (code === 2 || code === 3 || code === 45 || code === 48) return 'weather-clouds';
+    if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return 'weather-rain';
+    if ([71, 73, 75, 85, 86].includes(code)) return 'weather-snow';
+    if ([95, 96, 99].includes(code)) return 'weather-thunder';
+    return '';
+  };
+
+  const activeWeatherClass = mode === 'area' && weatherData ? getWeatherClass(weatherData.weather_code) : '';
+
   return (
-    <div className="glass-panel" style={{ marginBottom: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+    <div className="glass-panel weather-container" style={{ marginBottom: '2rem' }}>
+      {/* Subtle animated weather background */}
+      {activeWeatherClass && <div className={`weather-bg ${activeWeatherClass}`}></div>}
+      
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem', position: 'relative', zIndex: 1 }}>
         <h2 className="section-title" style={{ marginBottom: 0 }}>
           <Navigation size={20} />
           {mode === 'route' ? 'Route Selector' : 'Area Traffic Explorer'}
@@ -171,13 +224,14 @@ const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear, onModeChange }) => {
           >Explore Area</button>
         </div>
       </div>
-      <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem' }}>
-        {mode === 'route' 
-          ? 'Find the shortest path between two locations. Optionally add middle stops — the AI will show the direct optimal route AND the route through your stops so you can compare.' 
-          : 'Select a neighborhood or city to instantly see a traffic heat map and congestion levels for all roads in that area.'}
-      </p>
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+          {mode === 'route' 
+            ? 'Find the shortest path between two locations. Optionally add middle stops — the AI will show the direct optimal route AND the route through your stops so you can compare.' 
+            : 'Select a neighborhood or city to instantly see a traffic heat map and congestion levels for all roads in that area.'}
+        </p>
 
-      <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit}>
         {mode === 'route' ? (
           <>
             {/* Waypoint Builder */}
@@ -223,9 +277,11 @@ const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear, onModeChange }) => {
                       <label style={{ display: 'block', marginBottom: '0.25rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: '500' }}>
                         {getLabel(idx)}
                       </label>
-                      <select
+                      <input
+                        list={`city-list-${idx}`}
                         value={wp}
                         onChange={(e) => updateWaypoint(idx, e.target.value)}
+                        placeholder={idx === 0 ? 'Type start location...' : idx === waypoints.length - 1 ? 'Type destination...' : 'Type stop (optional)...'}
                         style={{
                           width: '100%', padding: '0.6rem 0.75rem', borderRadius: '8px',
                           background: 'rgba(0,0,0,0.05)', color: 'var(--text-primary)',
@@ -233,12 +289,10 @@ const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear, onModeChange }) => {
                           fontSize: '0.9rem',
                           transition: 'border-color 0.2s ease'
                         }}
-                      >
-                        <option value="" disabled style={{color: '#999'}}>
-                          {idx === 0 ? 'Select start location' : idx === waypoints.length - 1 ? 'Select destination' : 'Select stop (optional)'}
-                        </option>
-                        {CITIES.map(city => <option key={city} value={city} style={{ color: '#000' }}>{city}</option>)}
-                      </select>
+                      />
+                      <datalist id={`city-list-${idx}`}>
+                        {CITIES.map(city => <option key={city} value={city} />)}
+                      </datalist>
                     </div>
                     {/* Remove button for middle stops only */}
                     {idx > 0 && idx < waypoints.length - 1 && (
@@ -341,8 +395,8 @@ const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear, onModeChange }) => {
                      onClick={() => {
                        if (!user) {
                          alert("Please login first to request emergency authorization.");
-                       } else {
-                         document.getElementById('emergencyAuthBtn').click(); // trigger modal from Dashboard
+                       } else if (onOpenEmergencyAuth) {
+                         onOpenEmergencyAuth();
                        }
                      }}
                      style={{
@@ -368,33 +422,37 @@ const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear, onModeChange }) => {
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: '150px' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Select City</label>
-                <select
+                <input
+                  list="explore-city-list"
                   value={selectedCity}
                   onChange={(e) => {
                     setSelectedCity(e.target.value);
                     setSelectedPlace(""); // Reset place when city changes
                   }}
+                  placeholder="Type a city..."
                   style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'rgba(0,0,0,0.05)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)' }}
-                >
-                  <option value="" disabled style={{color: '#999'}}>Select a city</option>
+                />
+                <datalist id="explore-city-list">
                   {Object.keys(EXPLORE_REGIONS).map(city => (
-                    <option key={city} value={city} style={{ color: '#000' }}>{city}</option>
+                    <option key={city} value={city} />
                   ))}
-                </select>
+                </datalist>
               </div>
 
               <div style={{ flex: 1, minWidth: '150px', opacity: selectedCity ? 1 : 0.5, pointerEvents: selectedCity ? 'auto' : 'none' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Specific Place (Optional)</label>
-                <select
+                <input
+                  list="explore-place-list"
                   value={selectedPlace}
                   onChange={(e) => setSelectedPlace(e.target.value)}
+                  placeholder={`Type a place in ${selectedCity || 'City'} (Optional)`}
                   style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'rgba(0,0,0,0.05)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)' }}
-                >
-                  <option value="">All of {selectedCity || 'City'}</option>
-                  {selectedCity && EXPLORE_REGIONS[selectedCity].map(place => (
-                    <option key={place} value={place} style={{ color: '#000' }}>{place}</option>
+                />
+                <datalist id="explore-place-list">
+                  {selectedCity && EXPLORE_REGIONS[selectedCity] && EXPLORE_REGIONS[selectedCity].map(place => (
+                    <option key={place} value={place} />
                   ))}
-                </select>
+                </datalist>
               </div>
 
               <button type="submit" style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', background: 'var(--accent-blue)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
@@ -415,6 +473,7 @@ const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear, onModeChange }) => {
           </>
         )}
       </form>
+      </div>
     </div>
   );
 };

@@ -54,6 +54,14 @@ def _generate_synthetic_graph():
         "INA (Delhi)": {"lat": 28.5750, "lng": 77.2085, "is_arterial": True},
         "Dwarka Sector 21 (Delhi)": {"lat": 28.5521, "lng": 77.0583, "is_arterial": True},
         "Kalkaji Mandir (Delhi)": {"lat": 28.5398, "lng": 77.2562, "is_arterial": True},
+        "AIIMS New Delhi": {"lat": 28.5659, "lng": 77.2089, "is_arterial": False},
+        "Safdarjung Hospital (Delhi)": {"lat": 28.5680, "lng": 77.2060, "is_arterial": False},
+        "Apollo Hospital (Delhi)": {"lat": 28.5320, "lng": 77.2880, "is_arterial": False},
+        "Parliament Street Police Station (Delhi)": {"lat": 28.6250, "lng": 77.2100, "is_arterial": False},
+        "Hauz Khas Police Station (Delhi)": {"lat": 28.5450, "lng": 77.2050, "is_arterial": False},
+        "Connaught Place Police Station (Delhi)": {"lat": 28.6320, "lng": 77.2180, "is_arterial": False},
+        "Connaught Circus Fire Station (Delhi)": {"lat": 28.6330, "lng": 77.2200, "is_arterial": False},
+        "Safdarjung Fire Station (Delhi)": {"lat": 28.5600, "lng": 77.2000, "is_arterial": False},
         
         # Meerut Region
         "Partapur (Meerut)": {"lat": 28.9186, "lng": 77.6599, "is_arterial": True},
@@ -91,6 +99,16 @@ def _generate_synthetic_graph():
         "Rajpur Road (Dehradun)": {"lat": 30.3421, "lng": 78.0558, "is_arterial": False},
         "Jakhan (Dehradun)": {"lat": 30.3640, "lng": 78.0750, "is_arterial": False},
         "Sahastradhara Crossing (Dehradun)": {"lat": 30.3550, "lng": 78.0710, "is_arterial": False},
+        "Doon Hospital (Dehradun)": {"lat": 30.3180, "lng": 78.0350, "is_arterial": False},
+        "Max Super Speciality Hospital (Dehradun)": {"lat": 30.3600, "lng": 78.0800, "is_arterial": False},
+        "Synergy Hospital (Dehradun)": {"lat": 30.3300, "lng": 77.9900, "is_arterial": False},
+        "Kotwali Dehradun": {"lat": 30.3165, "lng": 78.0322, "is_arterial": False},
+        "Prem Nagar Police Station (Dehradun)": {"lat": 30.3340, "lng": 77.9650, "is_arterial": False},
+        "Rajpur Police Station (Dehradun)": {"lat": 30.3750, "lng": 78.0850, "is_arterial": False},
+        "Fire Station Dehradun": {"lat": 30.3200, "lng": 78.0400, "is_arterial": False},
+        "Mussoorie (Dehradun)": {"lat": 30.4598, "lng": 78.0644, "is_arterial": False},
+        "Chakrata (Dehradun)": {"lat": 30.7016, "lng": 77.8696, "is_arterial": False},
+        "Selaqui (Dehradun)": {"lat": 30.3701, "lng": 77.8540, "is_arterial": False},
         
         # Haridwar Region
         "Har Ki Pauri (Haridwar)": {"lat": 29.9538, "lng": 78.1719, "is_arterial": True},
@@ -115,7 +133,9 @@ def _generate_synthetic_graph():
         "India Gate (Delhi)", "Connaught Place (Delhi)", "Kashmiri Gate (Delhi)", "Anand Vihar (Delhi)",
         "Rajiv Chowk (Delhi)", "Hauz Khas (Delhi)", "Botanical Garden (Delhi)", "Chandni Chowk (Delhi)",
         "Karol Bagh (Delhi)", "Lajpat Nagar (Delhi)", "Dhaula Kuan (Delhi)", "INA (Delhi)",
-        "Dwarka Sector 21 (Delhi)", "Kalkaji Mandir (Delhi)"
+        "Dwarka Sector 21 (Delhi)", "Kalkaji Mandir (Delhi)", "AIIMS New Delhi", "Safdarjung Hospital (Delhi)",
+        "Apollo Hospital (Delhi)", "Parliament Street Police Station (Delhi)", "Hauz Khas Police Station (Delhi)",
+        "Connaught Place Police Station (Delhi)", "Connaught Circus Fire Station (Delhi)", "Safdarjung Fire Station (Delhi)"
     ]
     meerut_nodes = ["Partapur (Meerut)", "Meerut Bypass", "Meerut City Center"]
     mzn_nodes = ["Khatauli Bypass (MZN)", "Mansurpur (MZN)", "Muzaffarnagar Toll", "Muzaffarnagar City"]
@@ -127,7 +147,10 @@ def _generate_synthetic_graph():
         "GMS Road (Dehradun)", "Vasant Vihar (Dehradun)", "Uttaranchal University (Dehradun)",
         "Shivalik College (Dehradun)", "Dalanwala (Dehradun)", "Rispana Pull (Dehradun)",
         "Jogiwala (Dehradun)", "Raipur Stadium (Dehradun)", "Rajpur Road (Dehradun)",
-        "Jakhan (Dehradun)", "Sahastradhara Crossing (Dehradun)"
+        "Jakhan (Dehradun)", "Sahastradhara Crossing (Dehradun)", "Doon Hospital (Dehradun)",
+        "Max Super Speciality Hospital (Dehradun)", "Synergy Hospital (Dehradun)", "Kotwali Dehradun",
+        "Prem Nagar Police Station (Dehradun)", "Rajpur Police Station (Dehradun)", "Fire Station Dehradun",
+        "Mussoorie (Dehradun)", "Chakrata (Dehradun)", "Selaqui (Dehradun)"
     ]
     haridwar_nodes = ["Har Ki Pauri (Haridwar)", "Shantikunj (Haridwar)", "Haridwar Railway Station", "Chandi Devi (Haridwar)"]
     rishikesh_nodes = ["Triveni Ghat (Rishikesh)", "Laxman Jhula (Rishikesh)", "AIIMS Rishikesh", "Ram Jhula (Rishikesh)"]

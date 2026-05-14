@@ -326,6 +326,23 @@ const PreferencesModal = ({ isOpen, onClose }) => {
           .pref-item-modern { flex-direction: column; align-items: flex-start; gap: 1.5rem; }
           .pref-select-modern { width: 100%; }
         }
+
+        @media (max-width: 600px) {
+          .prefs-full-screen { padding: 0 1rem; }
+          .prefs-header { padding: 1.5rem 0; flex-direction: column; align-items: flex-start; gap: 1rem; }
+          .prefs-header h1 { font-size: 1.5rem; }
+          .prefs-header p { font-size: 0.9rem; }
+          .prefs-main-content { padding: 2rem 0; }
+          .settings-grid { gap: 2rem; }
+          .pref-item-modern { padding: 1.25rem; border-radius: 16px; }
+          .pref-title { font-size: 1.05rem; }
+          .pref-desc { font-size: 0.85rem; }
+          .footer-content { flex-direction: column; gap: 1rem; align-items: stretch; }
+          .footer-actions { flex-direction: column; }
+          .save-btn-modern { width: 100%; justify-content: center; }
+          .cancel-btn { width: 100%; text-align: center; }
+          .prefs-footer { padding: 1.5rem 0; }
+        }
       `}</style>
     </div>
   );

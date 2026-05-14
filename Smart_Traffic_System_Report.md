@@ -16,7 +16,12 @@ The **Smart Traffic Real-Time System** is a full-stack web application that moni
 - **Anomaly Detection:** Isolation Forest algorithm flags unusual congestion spikes (accidents, gridlocks).
 - **Smart Routing:** Dijkstra's algorithm with traffic-weighted edges finds the fastest real-time route.
 - **Multi-Stop Routing:** Users can add intermediate waypoints and compare direct vs. via-stop routes.
-- **Explore Mode:** Drill into any city/region and see color-coded road segments by congestion level.
+- **User Authentication:** Secure JWT-based login/registration with personalized history and preferences.
+- **Emergency Service Mode:** Specialized routing for medical and security responders with "Green Wave" priority.
+- **Rate-Limited Access:** Normal users can request temporary 2-hour medical emergency passes (limit 3/day, 2hr cooldown).
+- **Location Verification:** Emergency routes for normal users are strictly verified to ensure the destination is a Hospital or Police Station.
+- **Explore Mode:** Drill into any city/region with dynamic weather-aware background visuals and road-level congestion.
+- **Searchable UI:** High-performance searchable location selectors (datalists) for fast navigation.
 - **PWA Support:** Installable on mobile devices as a native-like app with offline tile caching.
 
 ---
@@ -47,6 +52,7 @@ The **Smart Traffic Real-Time System** is a full-stack web application that moni
 │  ├──────────────────────────────────────────────────────┤    │
 │  │ routes/                                               │    │
 │  │  ├─ route.py     (Shortest path & multi-stop routing)│    │
+│  │  ├─ auth.py      (JWT Authentication & Emergency Access)│    │
 │  │  ├─ predict.py   (Traffic prediction endpoint)       │    │
 │  │  ├─ live.py      (Current traffic state)             │    │
 │  │  ├─ anomaly.py   (Active anomalies)                  │    │
@@ -107,6 +113,8 @@ The **Smart Traffic Real-Time System** is a full-stack web application that moni
 | **NetworkX** | latest | Graph data structure for road network modeling |
 | **Pandas / NumPy** | latest | Data processing and numerical computation |
 | **PyMongo** | latest | MongoDB driver for persistent storage |
+| **PyJWT** | latest | JSON Web Token implementation for secure authentication |
+| **Bcrypt** | latest | Password hashing and verification |
 
 ### 3.3 External Services
 
@@ -170,11 +178,11 @@ Input (10 timesteps × 1 feature) → LSTM(32 units, ReLU) → Dense(16, ReLU) �
 **What it is:** The entire road network is modeled as an undirected weighted graph using NetworkX. Each node is an intersection/landmark, and each edge is a road segment.
 
 **Coverage:**
-- **Delhi:** 14 nodes (India Gate, Connaught Place, Kashmiri Gate, etc.)
-- **Meerut:** 3 nodes
+- **Delhi:** 22 nodes (AIIMS, Safdarjung, Apollo, Police Stations, etc.)
+- **Meerut:** 4 nodes
 - **Muzaffarnagar:** 4 nodes
 - **Roorkee:** 2 nodes
-- **Dehradun:** 20 nodes
+- **Dehradun:** 34 nodes (Hospitals, Police/Fire Stations, Mussoorie, Chakrata, Selaqui)
 - **Haridwar:** 4 nodes
 - **Rishikesh:** 4 nodes
 - **Inter-city highways:** 14 dedicated connections
@@ -254,6 +262,15 @@ Displays real-time anomaly cards with severity badges (CRITICAL/HIGH), affected 
 ### 5.6 LiveTicker (`components/LiveTicker.jsx`)
 A scrolling ticker bar showing the latest traffic updates and anomaly notifications.
 
+### 5.7 EmergencyAuthModal (`components/EmergencyAuthModal.jsx`)
+High-security modal for requesting temporary or permanent emergency responder access with validation and rate-limiting.
+
+### 5.8 IncidentModal (`components/IncidentModal.jsx`)
+High-visibility reporting tool for users to flag road accidents or roadblocks, featuring searchable location input.
+
+### 5.9 ProfileMenu (`components/ProfileMenu.jsx`)
+Personalized user dashboard for managing history, preferences, and emergency service status.
+
 ---
 
 ## 6. API Endpoints
@@ -272,6 +289,11 @@ A scrolling ticker bar showing the latest traffic updates and anomaly notificati
 | GET | `/api/route/area/{name}/boundary` | City boundary polygon |
 | POST | `/api/feedback` | Submit route feedback |
 | GET | `/api/recommend/` | Route recommendations |
+| POST | `/api/auth/register` | User registration |
+| POST | `/api/auth/login` | JWT login and token generation |
+| GET | `/api/auth/me` | Current user profile |
+| POST | `/api/auth/emergency-access` | Request emergency authorization |
+| POST | `/api/route/emergency` | Activate/Deactivate emergency route |
 | WS | `/ws/traffic` | Live traffic WebSocket stream |
 
 ---
@@ -497,7 +519,7 @@ smart-traffic-realtime-system/
 
 1. **Real Sensor Integration** — Replace the simulator with live data from traffic cameras or IoT sensors.
 2. **Multi-Feature LSTM** — Include weather, time-of-day, and day-of-week as input features.
-3. **User Authentication** — Login system for personalized route history and preferences.and ask premission for notification and location. when permission is denied, show a message to the user to enable the permission from settings.
+3. **Smart Toll Integration** — Predictive congestion-based toll pricing for highways.
 4. **Push Notifications** — Alert users about anomalies on their saved routes.
 5. **Historical Analytics Dashboard** — Visualize traffic patterns over days/weeks/months from MongoDB snapshots.
 6. **Graph Neural Networks (GNNs)** — Replace per-node LSTM with a spatial-temporal GNN that models relationships between adjacent intersections.

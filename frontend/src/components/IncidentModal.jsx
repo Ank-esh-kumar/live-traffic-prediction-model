@@ -89,18 +89,20 @@ const IncidentModal = ({ isOpen, onClose, citiesDb, apiUrl }) => {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Nearest Location / Intersection</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px', padding: '0 0.5rem' }}>
-              <MapPin size={18} color="var(--text-secondary)" />
-              <select 
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px', padding: '0 0.75rem' }}>
+              <MapPin size={20} color="var(--text-secondary)" />
+              <input 
+                list="incident-locations"
                 value={nodeId} 
                 onChange={e => setNodeId(e.target.value)}
-                style={{ flex: 1, padding: '0.75rem 0', background: 'transparent', border: 'none', color: 'var(--text-primary)', outline: 'none' }}
-              >
-                <option value="">Select a location...</option>
+                placeholder="Type to search location..."
+                style={{ flex: 1, padding: '0.85rem 0', background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '0.95rem', outline: 'none' }}
+              />
+              <datalist id="incident-locations">
                 {Object.keys(citiesDb).map(node => (
-                  <option key={node} value={node}>{node}</option>
+                  <option key={node} value={node} />
                 ))}
-              </select>
+              </datalist>
             </div>
           </div>
 

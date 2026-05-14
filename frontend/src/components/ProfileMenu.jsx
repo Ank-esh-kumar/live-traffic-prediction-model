@@ -242,6 +242,49 @@ const ProfileMenu = ({ isLightTheme, setIsLightTheme, highGraphics, setHighGraph
         .logout-item:hover {
           background: rgba(239, 68, 68, 0.1);
         }
+
+        /* Responsive ProfileMenu */
+        @media (max-width: 600px) {
+          .username-text {
+            display: none;
+          }
+
+          .profile-trigger {
+            padding-right: 0.4rem;
+          }
+
+          .chevron {
+            display: none;
+          }
+
+          .profile-dropdown {
+            position: fixed;
+            top: auto;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            border-radius: 20px 20px 0 0;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: dropdownSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+
+          @keyframes dropdownSlideUp {
+            from { opacity: 0; transform: translateY(100%); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        }
+
+        @media (min-width: 601px) and (max-width: 768px) {
+          .username-text {
+            max-width: 80px;
+          }
+
+          .profile-dropdown {
+            width: 260px;
+          }
+        }
       `}</style>
     </div>
   );

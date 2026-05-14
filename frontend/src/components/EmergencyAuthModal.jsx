@@ -130,7 +130,7 @@ const EmergencyAuthModal = ({ isOpen, onClose, onAuthSuccess, apiUrl, token }) =
             <div style={{ padding: '1rem', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: '8px' }}>
               <p style={{ margin: 0, fontSize: '0.9rem', color: '#f59e0b', display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
                 <CheckCircle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
-                <span>You are requesting a temporary medical emergency pass. This pass will automatically expire in 2 hours. Misuse may result in account suspension.</span>
+                <span>You are requesting a temporary medical emergency pass. This pass will automatically expire in 2 hours. Limited to 3 requests per day with a 2-hour cooldown. Misuse may result in account suspension.</span>
               </p>
             </div>
           )}
