@@ -1,0 +1,20 @@
+[33m237ae86[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m New api fetch protocall
+[33m2683dac[m New realtime traffic api integration
+[33m031d1e8[m Fix horizontal spill on mobile with grid-stats and rigid constraints
+[33m708369e[m Adding release note
+[33m8ab657f[m changes in responsiveness
+[33m7bb0f41[m Minor changes on path decision and graph view
+[33m077542f[m Major Update: Integrated Auth, Emergency Rate Limiting, Searchable UI, and Infrastructure Expansion
+[33m5216d1d[m feat: add trained machine learning model files and initialize service worker for offline caching
+[33ma383e2a[m Upload trained GNN model for high accuracy
+[33m2421337[m Fix auth error handling
+[33m2f9e9cb[m Merge branch 'main' of https://github.com/Ank-esh-kumar/live-traffic-prediction-model git pull origin main this is an major update in features
+[33m624b807[m Implement Emergency Authorization System, Proximity Alerts, and Incident Reporting
+[33mf66b5e7[m Update Smart_Traffic_System_Report.md
+[33mc11b497[m Added project report.
+[33m4707241[m Fix WebSocket reconnect spam and connecting indicator
+[33m7e726b9[m Add missing PWA icon for iOS
+[33ma440f7d[m Fix Vercel env vars and PWA iOS icons
+[33m9d2048e[m Final fixes for Render port binding, dynamic iPhone IPs, and iOS PWA icons
+[33mc4e8b81[m Fix deployment port binding timeouts
+[33m7f8defb[m Fix python version location for Render
