@@ -122,12 +122,7 @@ const Dashboard = ({ isLightTheme, highGraphics, onWeatherChange, activeTab = 'd
     window.open(`https://www.google.com/maps/dir/${coords.join('/')}`, '_blank', 'noopener,noreferrer');
   };
 
-  useEffect(() => {
-    fetch(`${API_URL}/api/model/metrics`)
-      .then(res => res.json())
-      .then(data => setModelAccuracy(data))
-      .catch(err => console.error("Failed to fetch model metrics", err));
-  }, []);
+
 
   // Sync connection state to global dot in ProfileMenu
   useEffect(() => {

@@ -22,7 +22,7 @@ const getStrength = (pw) => {
 };
 
 /* ── Reusable password input ── */
-const PwInput = ({ label, value, onChange, show, onToggle, placeholder, error, hint }) => (
+const PwInput = ({ label, value, onChange, show, onToggle, placeholder, error, hint, autoComplete }) => (
   <div style={{ marginBottom: '1.1rem' }}>
     <label style={{
       display: 'block', fontSize: '0.76rem', fontWeight: 700,
@@ -36,6 +36,7 @@ const PwInput = ({ label, value, onChange, show, onToggle, placeholder, error, h
         onChange={onChange}
         placeholder={placeholder}
         required
+        autoComplete={autoComplete}
         style={{
           width: '100%', padding: '0.78rem 2.8rem 0.78rem 1rem',
           borderRadius: '10px',
