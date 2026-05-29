@@ -72,9 +72,12 @@ class WeatherService:
         
         # Fetch fresh data
         fresh = self._fetch_all_regions()
+        
+        # Always update last_fetch to implement backoff and prevent API spam during 429s
+        self._last_fetch = now
+        
         if fresh:
             self._cache = fresh
-            self._last_fetch = now
             return self._cache
         
         # Return cache even if stale, or defaults

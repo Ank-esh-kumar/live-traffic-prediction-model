@@ -3,8 +3,6 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, Polygon, useMap, Circ
 import { Map as MapIcon, Zap } from 'lucide-react';
 import L from 'leaflet';
 
-const TOMTOM_KEY = import.meta.env.VITE_TOMTOM_KEY || 'oeuIkP4CDDqFy8wJJ4RoscVq1BUsjm3n';
-
 const CITIES = [
   { "id": "India Gate (Delhi)", "lat": 28.6129, "lng": 77.2295 },
   { "id": "Connaught Place (Delhi)", "lat": 28.6304, "lng": 77.2177 },
@@ -161,8 +159,7 @@ const createIncidentIcon = () => {
     popupAnchor: [0, -16]
   });
 };
-
-const TOMTOM_KEY = import.meta.env.VITE_TOMTOM_API_KEY || '';
+const TOMTOM_KEY = import.meta.env.VITE_TOMTOM_API_KEY || 'oeuIkP4CDDqFy8wJJ4RoscVq1BUsjm3n';
 
 // Generate a smooth curved path between two [lat,lng] points.
 // Used for area explorer roads — avoids costly routing API calls.
