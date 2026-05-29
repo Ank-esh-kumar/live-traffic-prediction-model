@@ -81,23 +81,14 @@ define(['./workbox-53feb3a3'], (function (workbox) { 'use strict';
     "revision": "3ca0b8505b4bec776b69afdba2768812"
   }, {
     "url": "index.html",
-    "revision": "0.m9mep3ur11"
+    "revision": "0.pk6mlei64a8"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
     allowlist: [/^\/$/]
   }));
-  workbox.registerRoute(/^https:\/\/[abc]\.basemaps\.cartocdn\.com\/.*/i, new workbox.CacheFirst({
-    "cacheName": "map-tiles",
-    plugins: [new workbox.ExpirationPlugin({
-      maxEntries: 500,
-      maxAgeSeconds: 2592000
-    }), new workbox.CacheableResponsePlugin({
-      statuses: [0, 200]
-    })]
-  }), 'GET');
-  workbox.registerRoute(/^https:\/\/[abc]\.tile\.openstreetmap\.org\/.*/i, new workbox.CacheFirst({
-    "cacheName": "osm-tiles",
+  workbox.registerRoute(/^https:\/\/api\.tomtom\.com\/map\/.*/i, new workbox.CacheFirst({
+    "cacheName": "tomtom-map-tiles",
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 500,
       maxAgeSeconds: 2592000

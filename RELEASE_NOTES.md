@@ -1,4 +1,48 @@
-# Release Notes - Smart Traffic Real-time System (v1.2.0)
+# Release Notes — Smart Traffic Real-time System
+
+---
+
+## v1.4.0 — Mobile UX Refinements & Map Immersion
+*Released: 2026-05-29*
+
+### 📱 Premium Mobile Experience
+- **Full-Screen Profile Portal:** The mobile Profile Menu has been completely rewritten using a React Portal. It now renders as a native-feeling, full-screen blurred modal overlay attached directly to the document root, guaranteeing it always floats flawlessly above all navigation bars and map elements.
+- **Intelligent Tab Overlays:** Data tabs (Analytics, Alerts, History) now employ smart containment logic on mobile, perfectly centering within the viewport without horizontal overflow or desktop offset bleed.
+- **Auto-Hiding Navigation:** The top header navigation pill now dynamically slides out of view when entering data panels to maximize vertical reading space, while the bottom tab-bar remains pinned for quick escape.
+
+### 🗺️ Uninterrupted Map Canvas
+- **Edge-to-Edge Immersion:** Purged default map zoom controls and redundant floating action buttons (like "Open Maps") to deliver a cleaner, uninterrupted edge-to-edge canvas.
+- **Iconified Interactive Legend:** The Map Legend toggle has been streamlined into a minimalist circular action button.
+- **Unified AI Metrics:** The real-time AI Precision metric (previously consuming valuable space in the bottom navbar) has been beautifully integrated directly into the top of the expandable Map Legend.
+
+---
+
+## v1.3.0 — Identity Security & Ambient Weather UI
+*Released: 2026-05-26*
+
+### 🔐 Change Password (2-Step Identity Verification)
+- **Step 1 — Confirm Identity:** User must enter their current password; it is validated against the backend via a dedicated read-only `/api/auth/verify-password` endpoint before any change is allowed.
+- **Step 2 — Set New Password:** Only revealed after verification succeeds. Features:
+  - Live **password strength bar** (Too Short → Weak → Fair → Good → Strong)
+  - Real-time **requirements checklist** (min 6 chars, number, uppercase, match)
+  - **Confirm field** with instant mismatch detection
+  - Guard: new password must differ from the current one
+  - Animated **success screen** on completion
+- Accessible via **Profile Menu → Change Password** (🔑 icon).
+
+### 🌦️ Full-Screen Weather Background Animation
+- When in **Explore Area** mode, a live weather animation fills the entire app background based on real-time Open-Meteo data:
+  - ☀️ **Clear** — warm golden radial glow, gentle pulse
+  - ☁️ **Cloudy** — soft silver gradient drifting across the screen
+  - 🌧️ **Rain** — animated diagonal rain streaks
+  - ❄️ **Snow** — falling dot pattern
+  - ⛈️ **Thunderstorm** — dark overlay with periodic lightning flash
+- Animation fades out (1.2s transition) when switching back to Route mode.
+- Implemented via CSS `::before` pseudo-element with `pointer-events: none` — zero impact on UI interactivity.
+
+---
+
+## v1.2.0 — Infrastructure Expansion & Premium Routing
 
 ## 🚀 Overview
 This release focuses on **Infrastructure Expansion**, **High-Precision Routing**, and **Premium UX Enhancements**. We have significantly expanded the geographic coverage and added critical infrastructure nodes to support life-saving emergency services.

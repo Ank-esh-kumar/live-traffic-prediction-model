@@ -135,11 +135,28 @@ body {
    HEADER LAYOUT
    ========================================= */
 .header {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 100;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem 0;
+  padding: 0.5rem 1rem;
   gap: 1rem;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  box-shadow: var(--panel-shadow);
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.header.hidden-nav {
+  transform: translateY(-150%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .header-left {
@@ -217,6 +234,156 @@ body {
 }
 
 /* =========================================
+   NAVIGATION BAR
+   ========================================= */
+.nav-bar {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  padding: 0.35rem;
+  overflow: hidden;
+  box-shadow: var(--panel-shadow);
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.nav-bar.hidden-nav {
+  transform: translate(-50%, 150%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.nav-bar-scroll {
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.nav-bar-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.1rem;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  position: relative;
+  transition: color 0.25s ease, background 0.25s ease, transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.nav-tab:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+body.light-theme .nav-tab:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.nav-tab:active {
+  transform: scale(0.96);
+}
+
+.nav-tab-active {
+  color: var(--accent-blue);
+  background: rgba(10, 132, 255, 0.12);
+}
+
+.nav-tab-active:hover {
+  background: rgba(10, 132, 255, 0.15);
+}
+
+body.light-theme .nav-tab-active {
+  background: rgba(0, 122, 255, 0.1);
+  color: var(--accent-blue);
+}
+
+body.light-theme .nav-tab-active:hover {
+  background: rgba(0, 122, 255, 0.14);
+}
+
+/* Active tab bottom indicator */
+.nav-tab-active::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 3px;
+  border-radius: 99px;
+  background: var(--accent-blue);
+  animation: navIndicatorIn 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+@keyframes navIndicatorIn {
+  from { width: 0; opacity: 0; }
+  to { width: 20px; opacity: 1; }
+}
+
+/* Tab panel entrance animation */
+.tab-panel-animate {
+  animation: tabFadeIn 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Mobile adjustments */
+@media (max-width: 480px) {
+  .nav-bar {
+    border-radius: 12px;
+    padding: 0.25rem;
+  }
+  
+  .nav-tab {
+    padding: 0.5rem 0.85rem;
+    font-size: 0.8rem;
+    gap: 0.35rem;
+  }
+
+  .nav-tab span {
+    display: none;
+  }
+
+  .nav-tab-active span {
+    display: inline;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+  .nav-bar {
+    border-radius: 14px;
+  }
+  
+  .nav-tab {
+    padding: 0.55rem 0.95rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* =========================================
    FLOATING ACTION BUTTON — ICON-ONLY FAB
    ========================================= */
 .fab-incident-btn {
@@ -278,12 +445,13 @@ body {
 
 /* 📐 Layout Grid (Responsive & Uniform) */
 .app-container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 1.5rem;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
 }
 
 /* Clear inherited margins */
@@ -582,6 +750,7 @@ body {
   cursor: pointer;
   text-align: left;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  min-width: 0;
 }
 
 .route-card.active {
@@ -692,18 +861,15 @@ body {
   padding: 0.6rem 0;
   border-top: 1px solid var(--glass-border);
   border-bottom: 1px solid var(--glass-border);
-  overflow: hidden;
+  flex-wrap: wrap;
 }
 
 .route-endpoint {
   font-weight: 600;
   font-size: 0.88rem;
   color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-  flex: 1; /* Allow stretching/shrinking */
+  white-space: normal;
+  flex: 0 1 auto;
 }
 
 .route-arrow {
@@ -1403,4 +1569,371 @@ body.light-theme .weather-bg {
   0%, 95%, 98% { opacity: 0.1; }
   96%, 99% { opacity: 0.6; background-color: rgba(255,255,255,0.2); }
   100% { opacity: 0.1; }
+}
+
+/* =========================================
+   GLOBAL APP WEATHER BACKGROUND OVERLAYS
+   Applied to .app-container when in Explore Area mode.
+   Uses ::before pseudo-element so no UI is affected.
+   ========================================= */
+
+.app-container {
+  position: relative;
+}
+
+.app-container::before {
+  content: '';
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+  border-radius: 0;
+}
+
+/* ☀️ Sunny / Clear */
+.app-weather-weather-clear::before {
+  opacity: 1;
+  background: radial-gradient(ellipse at 85% 10%, rgba(253, 224, 71, 0.18) 0%, transparent 55%),
+              radial-gradient(ellipse at 20% 90%, rgba(251, 191, 36, 0.08) 0%, transparent 40%);
+  animation: global-sun-pulse 6s ease-in-out infinite alternate;
+}
+@keyframes global-sun-pulse {
+  0%   { opacity: 0.7; transform: scale(1);    }
+  100% { opacity: 1;   transform: scale(1.04); }
+}
+
+/* ☁️ Cloudy / Overcast */
+.app-weather-weather-clouds::before {
+  opacity: 1;
+  background: linear-gradient(120deg, transparent 0%, rgba(148, 163, 184, 0.12) 50%, transparent 100%);
+  background-size: 300% 100%;
+  animation: global-drift-clouds 18s linear infinite;
+}
+@keyframes global-drift-clouds {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* 🌧️ Rain / Drizzle */
+.app-weather-weather-rain::before {
+  opacity: 1;
+  background: repeating-linear-gradient(
+    175deg,
+    transparent 0px,
+    transparent 6px,
+    rgba(96, 165, 250, 0.06) 6px,
+    rgba(96, 165, 250, 0.06) 7px
+  );
+  background-size: 100% 60px;
+  animation: global-fall-rain 0.9s linear infinite;
+}
+@keyframes global-fall-rain {
+  0%   { background-position: 0 -60px; }
+  100% { background-position: 0 60px;  }
+}
+
+/* ❄️ Snow */
+.app-weather-weather-snow::before {
+  opacity: 1;
+  background:
+    radial-gradient(circle, rgba(255,255,255,0.55) 1px, transparent 1px) 0 0 / 40px 40px,
+    radial-gradient(circle, rgba(255,255,255,0.35) 1px, transparent 1px) 20px 20px / 40px 40px;
+  animation: global-fall-snow 5s linear infinite;
+}
+@keyframes global-fall-snow {
+  0%   { background-position: 0 0,   20px 20px;   }
+  100% { background-position: 0 120px, 20px 140px; }
+}
+
+/* ⛈️ Thunderstorm */
+.app-weather-weather-thunder::before {
+  opacity: 1;
+  background: linear-gradient(180deg, rgba(55, 65, 81, 0.35) 0%, transparent 80%);
+  animation: global-flash-thunder 7s infinite;
+}
+@keyframes global-flash-thunder {
+  0%, 92%, 96%  { opacity: 0.6; }
+  93%, 95%      { opacity: 1;   background-color: rgba(255,255,255,0.07); }
+  100%          { opacity: 0.6; }
+}
+
+/* =========================================
+   FULLSCREEN MAP & SIDE PANEL LAYOUT
+   ========================================= */
+
+/* Make main section fill remaining height relative to viewport */
+main {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  z-index: 1;
+}
+
+/* Fullscreen Map Background */
+.map-fullscreen-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  border-radius: 0;
+  overflow: hidden;
+  border: none;
+}
+
+.map-fullscreen-bg .map-view-wrapper, 
+.map-fullscreen-bg .map-container,
+.leaflet-container {
+  height: 100vh !important;
+  width: 100vw !important;
+  border-radius: 0 !important;
+  border: none !important;
+}
+
+/* Side Panel (Google Maps style) */
+.map-side-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 400px;
+  max-width: 100vw;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease;
+  pointer-events: none; /* Let clicks pass through empty space */
+}
+
+.map-side-panel-inner {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  pointer-events: auto; /* Re-enable clicks for actual content */
+  padding: 1rem;
+  box-sizing: border-box;
+  
+  /* Hide scrollbar for cleaner look */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(150, 150, 150, 0.3) transparent;
+  
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-right: 1px solid var(--glass-border);
+  box-shadow: 4px 0 24px rgba(0,0,0,0.2);
+}
+
+.map-side-panel-inner::-webkit-scrollbar {
+  width: 6px;
+}
+.map-side-panel-inner::-webkit-scrollbar-thumb {
+  background-color: rgba(150, 150, 150, 0.3);
+  border-radius: 10px;
+}
+
+.map-side-panel-min {
+  transform: translateX(calc(-100% - 1rem));
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Panel Toggle Button */
+.map-panel-toggle {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 400px; /* Panel width */
+  z-index: 101;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  width: 28px;
+  height: 64px;
+  border-radius: 0 12px 12px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  transition: left 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.2s, transform 0.2s;
+  padding: 0;
+  border-left: none;
+}
+
+.map-panel-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+body.light-theme .map-panel-toggle:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.map-panel-toggle-collapsed {
+  left: 0;
+  border-radius: 0 12px 12px 0;
+  border-left: none;
+}
+
+/* Map Overlay Controls */
+.map-overlay-controls {
+  position: fixed;
+  top: 6rem;
+  right: 1.5rem;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.75rem;
+  pointer-events: auto;
+}
+
+.map-connection-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(0,0,0,0.2);
+}
+.map-connection-dot.connected {
+  background-color: var(--accent-green);
+  box-shadow: 0 0 12px var(--accent-green);
+}
+.map-connection-dot.disconnected {
+  background-color: var(--danger);
+  box-shadow: 0 0 12px var(--danger);
+  animation: pulse-danger 1.5s infinite;
+}
+@keyframes pulse-danger {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+/* Emergency Banners Overlay */
+.map-emergency-banner {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  border-radius: 16px;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  width: 90%;
+  max-width: 600px;
+}
+
+/* Non-Dashboard Tabs Overlay */
+.map-tab-overlay {
+  position: fixed;
+  top: 6rem;
+  left: calc(400px + 1.5rem);
+  right: 1.5rem;
+  bottom: 6rem;
+  z-index: 15;
+  overflow-y: auto;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  
+  /* Hide scrollbar */
+  scrollbar-width: thin;
+}
+
+.map-tab-overlay .ios-glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+/* Mobile Adjustments for Layout */
+@media (max-width: 768px) {
+  .map-side-panel {
+    width: calc(100% - 2rem);
+    /* Keeps original edge-to-edge styling, rely on padding */
+  }
+
+  .map-tab-overlay {
+    left: 1rem;
+    right: 1rem;
+    width: auto;
+    max-width: none;
+    top: 5rem;
+    bottom: 5rem;
+  }
+  
+  .map-panel-toggle {
+    left: calc(100% - 1rem - 36px);
+    border-radius: 8px 0 0 8px;
+    border-right: none;
+    border-left: 1px solid var(--glass-border);
+    display: flex;
+  }
+  
+  .map-panel-toggle-collapsed {
+    left: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+    margin-left: 0;
+  }
+  
+  .map-side-panel-min {
+    transform: translateX(calc(-100% - 2rem));
+  }
+  
+  .nav-bar {
+    width: auto;
+    max-width: calc(100vw - 2rem);
+    bottom: 1rem;
+  }
+  
+  .nav-bar-scroll {
+    justify-content: center;
+  }
+  
+  .nav-tab span {
+    display: none; /* Hide text on small screens */
+  }
+  
+  .nav-tab {
+    padding: 0.5rem;
+  }
+  
+  .map-overlay-controls {
+    top: auto;
+    bottom: 5rem; /* Above FAB */
+  }
+  
+  .fab-incident-btn {
+    bottom: 5rem;
+    right: 1rem;
+  }
+
+  .header {
+    top: 1rem;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: max-content;
+    max-width: calc(100vw - 2rem);
+    justify-content: center;
+  }
+  
+  .header.hidden-nav {
+    transform: translateY(-150%);
+  }
 }

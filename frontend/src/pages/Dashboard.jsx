@@ -5,7 +5,7 @@ import TrafficChart from '../components/TrafficChart';
 import LiveTicker from '../components/LiveTicker';
 import AnomalyAlert from '../components/AnomalyAlert';
 import RoutePanel from '../components/RoutePanel';
-import { Activity, ExternalLink, CheckCircle, ThumbsUp, Route, Zap, AlertTriangle, AlertOctagon, ShieldAlert } from 'lucide-react';
+import { Activity, ExternalLink, CheckCircle, ThumbsUp, Route, Zap, AlertTriangle, AlertOctagon, ShieldAlert, BarChart3, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import EmergencyAuthModal from '../components/EmergencyAuthModal';
 import HistoryPanel from '../components/HistoryPanel';
@@ -77,7 +77,7 @@ const CITIES_DB = {
 
 const API_URL = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000`;
 
-const Dashboard = ({ isLightTheme, highGraphics }) => {
+const Dashboard = ({ isLightTheme, highGraphics, onWeatherChange, activeTab = 'dashboard' }) => {
   const { trafficData, anomalies, predictions, incidents, globalEmergencyRoute, isConnected } = useLiveTraffic();
   const [activeRoutePath, setActiveRoutePath] = useState(null);
   const [activeAltIndex, setActiveAltIndex] = useState(0);
@@ -93,6 +93,7 @@ const Dashboard = ({ isLightTheme, highGraphics }) => {
   const { user, token, saveToHistory, refreshUser } = useAuth();
   const [isIncidentModalOpen, setIsIncidentModalOpen] = useState(false);
   const [isEmergencyAuthOpen, setIsEmergencyAuthOpen] = useState(false);
+  const [isPanelMinimized, setIsPanelMinimized] = useState(false);
 
   const [toastAlert, setToastAlert] = useState(null);
   const [modelAccuracy, setModelAccuracy] = useState(null);
@@ -120,6 +121,61 @@ const Dashboard = ({ isLightTheme, highGraphics }) => {
     if (coords.length < 2) { alert("Insufficient coordinates."); return; }
     window.open(`https://www.google.com/maps/dir/${coords.join('/')}`, '_blank', 'noopener,noreferrer');
   };
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/model/metrics`)
+      .then(res => res.json())
+      .then(data => setModelAccuracy(data))
+      .catch(err => console.error("Failed to fetch model metrics", err));
+  }, []);
+
+  // Sync connection state to global dot in ProfileMenu
+  useEffect(() => {
+    const dot = document.getElementById('global-connection-dot');
+    const text = document.getElementById('global-connection-text');
+    if (dot && text) {
+      if (isConnected) {
+        dot.className = 'map-connection-dot connected';
+        dot.title = 'Live';
+        text.innerText = 'Live';
+      } else {
+        dot.className = 'map-connection-dot disconnected';
+        dot.title = 'Offline';
+        text.innerText = 'Offline';
+      }
+    }
+  }, [isConnected]);
+
+  // Toggle Header and Nav-Bar visibility based on panel state and active tab
+  useEffect(() => {
+    const header = document.querySelector('.header');
+    const navBar = document.querySelector('.nav-bar');
+    if (header && navBar) {
+      if (activeTab === 'dashboard') {
+        if (!isPanelMinimized) {
+          // If side panel is open, hide both
+          header.classList.add('hidden-nav');
+          navBar.classList.add('hidden-nav');
+        } else {
+          // Dashboard closed panel state
+          header.classList.remove('hidden-nav');
+          navBar.classList.remove('hidden-nav');
+        }
+      } else {
+        // If on another tab, only hide the top header, keep nav-bar visible
+        header.classList.add('hidden-nav');
+        navBar.classList.remove('hidden-nav');
+      }
+    }
+    
+    // Cleanup to ensure they appear if Dashboard unmounts
+    return () => {
+      if (header && navBar) {
+        header.classList.remove('hidden-nav');
+        navBar.classList.remove('hidden-nav');
+      }
+    };
+  }, [isPanelMinimized, activeTab]);
 
   useEffect(() => {
     const fetchAccuracy = async () => {
@@ -262,8 +318,7 @@ const Dashboard = ({ isLightTheme, highGraphics }) => {
   }, [globalEmergencyRoute, activeRoutePath, isEmergencyActive]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-
+    <>
       {/* ICON-ONLY FAB — Report Incident */}
       <button
         className="fab-incident-btn"
@@ -284,280 +339,265 @@ const Dashboard = ({ isLightTheme, highGraphics }) => {
         </div>
       )}
 
-      {/* EMERGENCY WARNING */}
+      {/* ========== ALWAYS-ON FULLSCREEN MAP ========== */}
+      <div className="map-fullscreen-bg">
+        <MapView
+          trafficData={filteredTrafficData}
+          activeRoutePath={activeRoutePath}
+          shortestPath={shortestPath}
+          routeInfo={routeInfo}
+          allRoutes={allRoutes}
+          activeArea={activeArea}
+          isLightTheme={isLightTheme}
+          routeEndpoints={routeEndpoints}
+          highGraphics={highGraphics}
+          isEmergencyActive={isEmergencyActive}
+          preferredMode={user?.preferences?.preferred_mode || 'fastest'}
+          activeAltIndex={activeAltIndex}
+          incidents={incidents}
+          modelAccuracy={modelAccuracy}
+        />
+      </div>
+
+
+      {/* EMERGENCY BANNERS — overlay on top of map */}
       {isInWayOfEmergency && (
-        <div className="ios-glass-panel" style={{ background: isLightTheme ? 'rgba(254, 226, 226, 0.8)' : 'rgba(127, 29, 29, 0.6)', color: isLightTheme ? '#b91c1c' : '#fca5a5', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', border: `1px solid ${isLightTheme ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.4)'}`, animation: 'pulse 2s infinite' }}>
-          <AlertTriangle size={28} />
+        <div className="map-emergency-banner" style={{ background: isLightTheme ? 'rgba(254, 226, 226, 0.9)' : 'rgba(127, 29, 29, 0.85)', color: isLightTheme ? '#b91c1c' : '#fca5a5', border: `1px solid ${isLightTheme ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.4)'}`, animation: 'pulse 2s infinite' }}>
+          <AlertTriangle size={24} />
           <div>
-            <div style={{ fontWeight: 700, fontSize: '1.15rem' }}>EMERGENCY VEHICLE APPROACHING</div>
-            <div style={{ fontSize: '0.95rem', opacity: 0.9, marginTop: '4px' }}>An active emergency service is approaching your current route. Please clear the way safely.</div>
+            <div style={{ fontWeight: 700, fontSize: '1rem' }}>EMERGENCY VEHICLE APPROACHING</div>
+            <div style={{ fontSize: '0.85rem', opacity: 0.9, marginTop: '2px' }}>An active emergency service is approaching your route. Please clear the way.</div>
           </div>
         </div>
       )}
 
-      {/* ACTIVE EMERGENCY BANNER */}
       {isEmergencyActive && (
-        <div className="ios-glass-panel" style={{ background: isLightTheme ? 'rgba(254, 226, 226, 0.95)' : 'rgba(127, 29, 29, 0.9)', color: isLightTheme ? '#b91c1c' : '#fca5a5', padding: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', border: `2px solid #ef4444`, boxShadow: '0 0 20px rgba(239, 68, 68, 0.4)', animation: 'pulse 2s infinite', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <ShieldAlert size={28} color="#ef4444" />
-            <div>
-              <div style={{ fontWeight: 800, fontSize: '1.2rem', letterSpacing: '0.05em' }}>EMERGENCY SERVICE ACTIVE</div>
-              <div style={{ fontSize: '0.9rem', opacity: 0.9, marginTop: '2px' }}>Your route is currently prioritized. Cross-traffic is halted. Please end the service as soon as you reach your destination.</div>
-            </div>
+        <div className="map-emergency-banner" style={{ background: isLightTheme ? 'rgba(254, 226, 226, 0.95)' : 'rgba(127, 29, 29, 0.9)', color: isLightTheme ? '#b91c1c' : '#fca5a5', border: '2px solid #ef4444', boxShadow: '0 0 20px rgba(239, 68, 68, 0.4)', animation: 'pulse 2s infinite' }}>
+          <ShieldAlert size={24} color="#ef4444" />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '0.03em' }}>EMERGENCY SERVICE ACTIVE</div>
+            <div style={{ fontSize: '0.82rem', opacity: 0.9, marginTop: '2px' }}>Route prioritized. End when you reach your destination.</div>
           </div>
           <button
             onClick={endEmergencyService}
-            style={{ padding: '0.75rem 1.5rem', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 12px rgba(239,68,68,0.4)', flexShrink: 0 }}
+            style={{ padding: '0.5rem 1rem', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '0.82rem' }}
           >
             End Emergency
           </button>
         </div>
       )}
 
-      {/* ROUTE PANEL */}
-      <RoutePanel
-        onRouteSelect={handleRouteSelect}
-        onAreaSelect={handleAreaSelect}
-        onClear={handleClear}
-        onModeChange={handleModeChange}
-        onOpenEmergencyAuth={() => setIsEmergencyAuthOpen(true)}
-        isEmergencyActive={isEmergencyActive}
-      />
+      {/* ========== DASHBOARD TAB: Google Maps-style Side Panel ========== */}
+      {activeTab === 'dashboard' && (
+        <>
+          {/* Toggle button - always visible */}
+          <button
+            className={`map-panel-toggle ${isPanelMinimized ? 'map-panel-toggle-collapsed' : ''}`}
+            onClick={() => setIsPanelMinimized(p => !p)}
+            aria-label={isPanelMinimized ? 'Open panel' : 'Close panel'}
+          >
+            {isPanelMinimized ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          </button>
 
-      <div className="dashboard-grid">
-        <div className="main-content">
-          <div className="ios-glass-panel">
-            <div className="panel-header">
-              <h2 className="section-title"><Activity style={{ color: isConnected ? '#34c759' : '#ff3b30' }} size={22} /> Live Network Map</h2>
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <div className="accuracy-pill">
-                  <Zap size={14} /> <span>{modelAccuracy?.accuracy?.toFixed(1) || '--'}% Precision</span>
-                </div>
-                {activeRoutePath && !isEmergencyActive && (
-                  <button className="ios-button" onClick={openGoogleMaps} style={{ background: '#007aff', color: '#fff', border: 'none' }}>
-                    <ExternalLink size={16} /> <span className="hide-on-mobile">Open Maps</span>
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="map-view-wrapper" style={{ borderRadius: '16px', overflow: 'hidden', border: `1px solid ${isLightTheme ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.08)'}` }}>
-              <MapView trafficData={filteredTrafficData} activeRoutePath={activeRoutePath} shortestPath={shortestPath} routeInfo={routeInfo} allRoutes={allRoutes} activeArea={activeArea} isLightTheme={isLightTheme} routeEndpoints={routeEndpoints} highGraphics={highGraphics} isEmergencyActive={isEmergencyActive} preferredMode={user?.preferences?.preferred_mode || 'fastest'} activeAltIndex={activeAltIndex} incidents={incidents} />
-            </div>
-          </div>
+          {/* Side Panel */}
+          <div className={`map-side-panel ${isPanelMinimized ? 'map-side-panel-min' : ''}`}>
+            <div className="map-side-panel-inner">
+              {/* Route Panel */}
+              <RoutePanel
+                onRouteSelect={handleRouteSelect}
+                onAreaSelect={handleAreaSelect}
+                onClear={handleClear}
+                onModeChange={handleModeChange}
+                onOpenEmergencyAuth={() => setIsEmergencyAuthOpen(true)}
+                isEmergencyActive={isEmergencyActive}
+                onWeatherChange={onWeatherChange}
+              />
 
-          {/* AVAILABLE ROUTES — DETAILED (Hidden when via-route exists to prevent overriding stops) */}
-          {allRoutes.length > 0 && activeRoutePath && !activeArea && !viaRouteInfo && (
-            <div className="ios-glass-panel">
-              <div className="routes-section-header">
-                <h2 className="section-title"><CheckCircle size={20} color="#007aff" /> Available Routes ({allRoutes.length})</h2>
-                <p className="routes-subtitle">Select a route to preview on the map. Train the AI by setting your preference.</p>
-              </div>
-              <div className="route-grid">
-                {allRoutes.map((route, idx) => {
-                  const isSelected = activeAltIndex === route.alt_index;
-                  const fullPath = route.full_path || route.path || [];
-                  const hops = fullPath.length;
-                  const startName = fullPath[0]?.split('(')[0]?.trim() || '—';
-                  const endName = fullPath[fullPath.length - 1]?.split('(')[0]?.trim() || '—';
-                  const viaNode = hops > 2 ? fullPath[Math.floor(hops / 2)]?.split('(')[0]?.trim() : null;
-
-                  const congestionLevel = route.expected_time > 40 ? 'high' : route.expected_time > 20 ? 'moderate' : 'low';
-                  const congestionColor = congestionLevel === 'high' ? 'var(--danger)' : congestionLevel === 'moderate' ? 'var(--accent-orange)' : 'var(--accent-green)';
-                  const sustainability = Math.max(60, 100 - (route.expected_time / 2)).toFixed(0);
-
-                  return (
-                    <button
-                      key={idx}
-                      className={`route-card ${isSelected ? 'active' : ''}`}
-                      onClick={() => { setActiveRoutePath(route.path); setActiveAltIndex(route.alt_index); setSelectedChoice(route.is_ai ? 'ai' : 'shortest'); setFeedbackSent(false); }}
-                    >
-                      {/* Top: Type badge + Selected indicator */}
-                      <div className="route-card-top">
-                        <span className="route-type-badge" style={{ background: route.is_ai ? 'rgba(52, 199, 89, 0.12)' : route.is_shortest ? 'rgba(10, 132, 255, 0.12)' : 'rgba(255, 159, 10, 0.12)', color: route.is_ai ? 'var(--accent-green)' : route.is_shortest ? 'var(--accent-blue)' : 'var(--accent-orange)' }}>
-                          {route.is_ai ? 'AI Predicted Route' : route.is_shortest ? 'Shortest Route' : 'Alternate Route'}
-                        </span>
-                        {isSelected && <span className="route-selected-dot" />}
-                      </div>
-
-                      {/* Path preview */}
-                      <div className="route-path-preview">
-                        <span className="route-endpoint">{startName}</span>
-                        <span className="route-arrow">→</span>
-                        {viaNode && <><span className="route-endpoint" style={{ opacity: 0.7, fontSize: '0.8rem' }}>{viaNode}</span><span className="route-arrow">→</span></>}
-                        <span className="route-endpoint">{endName}</span>
-                      </div>
-
-                      {/* Stats row */}
-                      <div className="route-stats-row">
-                        <div className="route-stat">
-                          <span className="route-stat-value">{route.distance}</span>
-                          <span className="route-stat-label">km</span>
-                        </div>
-                        <div className="route-stat-divider" />
-                        <div className="route-stat">
-                          <span className="route-stat-value">{route.expected_time}</span>
-                          <span className="route-stat-label">min</span>
-                        </div>
-                        <div className="route-stat-divider" />
-                        <div className="route-stat">
-                          <span className="route-stat-value">{sustainability}%</span>
-                          <span className="route-stat-label">Eco-Score</span>
-                        </div>
-                      </div>
-
-                      {/* Congestion indicator */}
-                      <div className="route-congestion-row">
-                        <span className="route-congestion-dot" style={{ background: congestionColor }} />
-                        <span className="route-congestion-text" style={{ color: congestionColor }}>
-                          {congestionLevel === 'high' ? 'Heavy Traffic' : congestionLevel === 'moderate' ? 'Moderate Flow' : 'Clear Roads'}
-                        </span>
-                        <div className="route-congestion-bar">
-                          <div className="route-congestion-fill" style={{ width: `${Math.min(100, (route.expected_time / 60) * 100)}%`, background: congestionColor }} />
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Feedback button */}
-              {selectedChoice && (
-                <div className="route-feedback-row">
-                  <button className="ios-button preferred-btn" onClick={submitFeedback} disabled={feedbackSent} style={{ background: feedbackSent ? '#34c759' : '#007aff', color: '#fff', border: 'none' }}>
-                    <ThumbsUp size={18} /> {feedbackSent ? 'Preference Saved ✓' : 'Set as Preferred Route'}
-                  </button>
-                  {feedbackSent && <span className="feedback-success-text">Your choice helps train smarter predictions</span>}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ROUTE COMPARISON — DETAILED */}
-          {viaRouteInfo && routeInfo && !activeArea && (
-            <div className="ios-glass-panel">
-              <div className="routes-section-header">
-                <h2 className="section-title"><Route size={20} color="#ff9500" /> Route Comparison</h2>
-                <p className="routes-subtitle">Compare the direct AI-optimized route against the path through your selected stops.</p>
-              </div>
-              <div className="comparison-grid">
-                {/* DIRECT ROUTE CARD */}
-                <button className={`compare-card ${selectedChoice === 'ai' ? 'active-ai' : ''}`} onClick={() => switchToPath('ai')}>
-                  <div className="compare-card-header">
-                    <div className="compare-icon-wrap" style={{ background: 'rgba(52, 199, 89, 0.12)' }}>🚀</div>
-                    <div className="compare-title-group">
-                      <span className="compare-title">Direct Route</span>
-                      <span className="compare-desc">AI-optimized shortest path</span>
-                    </div>
-                    {selectedChoice === 'ai' && <span className="compare-active-badge">Active</span>}
+              {/* AVAILABLE ROUTES */}
+              {allRoutes.length > 0 && activeRoutePath && !activeArea && !viaRouteInfo && (
+                <div className="ios-glass-panel">
+                  <div className="routes-section-header">
+                    <h2 className="section-title" style={{ fontSize: '1.05rem' }}><CheckCircle size={18} color="#007aff" /> Routes ({allRoutes.length})</h2>
+                    <p className="routes-subtitle" style={{ fontSize: '0.82rem' }}>Select a route to preview. Train the AI.</p>
                   </div>
-                  <div className="compare-stats-grid">
-                    <div className="compare-stat-item">
-                      <span className="compare-stat-value" style={{ color: 'var(--accent-green)' }}>{routeInfo.ai_distance}</span>
-                      <span className="compare-stat-label">km</span>
-                    </div>
-                    <div className="compare-stat-item">
-                      <span className="compare-stat-value" style={{ color: 'var(--accent-green)' }}>{routeInfo.ai_time}</span>
-                      <span className="compare-stat-label">min</span>
-                    </div>
-                    <div className="compare-stat-item">
-                      <span className="compare-stat-value">{(100 - routeInfo.ai_time / 3).toFixed(0)}%</span>
-                      <span className="compare-stat-label">Sustainability</span>
-                    </div>
-                    <div className="compare-stat-item">
-                      <span className="compare-stat-value">A+</span>
-                      <span className="compare-stat-label">Safety Index</span>
-                    </div>
-                  </div>
-                </button>
+                  <div className="route-grid" style={{ gridTemplateColumns: '1fr' }}>
+                    {allRoutes.map((route, idx) => {
+                      const isSelected = activeAltIndex === route.alt_index;
+                      const fullPath = route.full_path || route.path || [];
+                      const hops = fullPath.length;
+                      const startName = fullPath[0]?.split('(')[0]?.trim() || '—';
+                      const endName = fullPath[fullPath.length - 1]?.split('(')[0]?.trim() || '—';
+                      const viaNode = hops > 2 ? fullPath[Math.floor(hops / 2)]?.split('(')[0]?.trim() : null;
+                      const congestionLevel = route.expected_time > 40 ? 'high' : route.expected_time > 20 ? 'moderate' : 'low';
+                      const congestionColor = congestionLevel === 'high' ? 'var(--danger)' : congestionLevel === 'moderate' ? 'var(--accent-orange)' : 'var(--accent-green)';
+                      const sustainability = Math.max(60, 100 - (route.expected_time / 2)).toFixed(0);
 
-                {/* VIA STOPS ROUTE CARD */}
-                <button className={`compare-card ${selectedChoice === 'via_stops' ? 'active-via' : ''}`} onClick={() => switchToPath('via_stops')}>
-                  <div className="compare-card-header">
-                    <div className="compare-icon-wrap" style={{ background: 'rgba(255, 159, 10, 0.12)' }}>📍</div>
-                    <div className="compare-title-group">
-                      <span className="compare-title">Via Stops</span>
-                      <span className="compare-desc">Route through your waypoints</span>
-                    </div>
-                    {selectedChoice === 'via_stops' && <span className="compare-active-badge" style={{ background: 'rgba(255, 159, 10, 0.15)', color: 'var(--accent-orange)' }}>Active</span>}
+                      return (
+                        <button
+                          key={idx}
+                          className={`route-card ${isSelected ? 'active' : ''}`}
+                          onClick={() => { setActiveRoutePath(route.path); setActiveAltIndex(route.alt_index); setSelectedChoice(route.is_ai ? 'ai' : 'shortest'); setFeedbackSent(false); }}
+                        >
+                          <div className="route-card-top">
+                            <span className="route-type-badge" style={{ background: route.is_ai ? 'rgba(52, 199, 89, 0.12)' : route.is_shortest ? 'rgba(10, 132, 255, 0.12)' : 'rgba(255, 159, 10, 0.12)', color: route.is_ai ? 'var(--accent-green)' : route.is_shortest ? 'var(--accent-blue)' : 'var(--accent-orange)' }}>
+                              {route.is_ai ? 'AI Route' : route.is_shortest ? 'Shortest' : 'Alternate'}
+                            </span>
+                            {isSelected && <span className="route-selected-dot" />}
+                          </div>
+                          <div className="route-path-preview">
+                            <span className="route-endpoint">{startName}</span>
+                            <span className="route-arrow">→</span>
+                            {viaNode && <><span className="route-endpoint" style={{ opacity: 0.7, fontSize: '0.75rem' }}>{viaNode}</span><span className="route-arrow">→</span></>}
+                            <span className="route-endpoint">{endName}</span>
+                          </div>
+                          <div className="route-stats-row">
+                            <div className="route-stat"><span className="route-stat-value">{route.distance}</span><span className="route-stat-label">km</span></div>
+                            <div className="route-stat-divider" />
+                            <div className="route-stat"><span className="route-stat-value">{route.expected_time}</span><span className="route-stat-label">min</span></div>
+                            <div className="route-stat-divider" />
+                            <div className="route-stat"><span className="route-stat-value">{sustainability}%</span><span className="route-stat-label">Eco</span></div>
+                          </div>
+                          <div className="route-congestion-row">
+                            <span className="route-congestion-dot" style={{ background: congestionColor }} />
+                            <span className="route-congestion-text" style={{ color: congestionColor }}>
+                              {congestionLevel === 'high' ? 'Heavy' : congestionLevel === 'moderate' ? 'Moderate' : 'Clear'}
+                            </span>
+                            <div className="route-congestion-bar"><div className="route-congestion-fill" style={{ width: `${Math.min(100, (route.expected_time / 60) * 100)}%`, background: congestionColor }} /></div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <div className="compare-stats-grid">
-                    <div className="compare-stat-item">
-                      <span className="compare-stat-value" style={{ color: 'var(--accent-orange)' }}>{viaRouteInfo.ai_distance}</span>
-                      <span className="compare-stat-label">km</span>
-                    </div>
-                    <div className="compare-stat-item">
-                      <span className="compare-stat-value" style={{ color: 'var(--accent-orange)' }}>{viaRouteInfo.ai_time}</span>
-                      <span className="compare-stat-label">min</span>
-                    </div>
-                    <div className="compare-stat-item">
-                      <span className="compare-stat-value">{(100 - viaRouteInfo.ai_time / 3).toFixed(0)}%</span>
-                      <span className="compare-stat-label">Sustainability</span>
-                    </div>
-                    <div className="compare-stat-item">
-                      <span className="compare-stat-value">A</span>
-                      <span className="compare-stat-label">Safety Index</span>
-                    </div>
-                  </div>
-
-                  {/* Delta tags */}
-                  <div className="compare-delta-row">
-                    <div className={`delta-tag ${viaRouteInfo.ai_distance > routeInfo.ai_distance ? 'slower' : 'faster'}`}>
-                      {viaRouteInfo.ai_distance > routeInfo.ai_distance
-                        ? `+${(viaRouteInfo.ai_distance - routeInfo.ai_distance).toFixed(1)} km`
-                        : viaRouteInfo.ai_distance < routeInfo.ai_distance
-                          ? `-${(routeInfo.ai_distance - viaRouteInfo.ai_distance).toFixed(1)} km`
-                          : 'Same distance'}
-                    </div>
-                    <div className={`delta-tag ${viaRouteInfo.ai_time > routeInfo.ai_time ? 'slower' : 'faster'}`}>
-                      {viaRouteInfo.ai_time > routeInfo.ai_time
-                        ? `+${(viaRouteInfo.ai_time - routeInfo.ai_time).toFixed(0)} min`
-                        : viaRouteInfo.ai_time < routeInfo.ai_time
-                          ? `-${(routeInfo.ai_time - viaRouteInfo.ai_time).toFixed(0)} min`
-                          : 'Same time'}
-                    </div>
-                  </div>
-
-                  {/* Stops list */}
-                  {viaRouteInfo.stops && viaRouteInfo.stops.length > 0 && (
-                    <div className="compare-stops-list">
-                      <span className="compare-stops-label">Waypoints:</span>
-                      {viaRouteInfo.stops.map((stop, i) => (
-                        <span key={i} className="compare-stop-chip">{stop.split('(')[0].trim()}</span>
-                      ))}
+                  {selectedChoice && (
+                    <div className="route-feedback-row">
+                      <button className="ios-button preferred-btn" onClick={submitFeedback} disabled={feedbackSent} style={{ background: feedbackSent ? '#34c759' : '#007aff', color: '#fff', border: 'none' }}>
+                        <ThumbsUp size={16} /> {feedbackSent ? 'Saved ✓' : 'Set Preferred'}
+                      </button>
+                      {feedbackSent && <span className="feedback-success-text">Helps train smarter AI</span>}
                     </div>
                   )}
-                </button>
-              </div>
+                </div>
+              )}
 
-              {/* Feedback button for Comparison Mode */}
-              {selectedChoice && (
-                <div className="route-feedback-row">
-                  <button className="ios-button preferred-btn" onClick={submitFeedback} disabled={feedbackSent} style={{ background: feedbackSent ? '#34c759' : '#007aff', color: '#fff', border: 'none' }}>
-                    <ThumbsUp size={18} /> {feedbackSent ? 'Preference Saved ✓' : 'Set as Preferred Route'}
-                  </button>
-                  {feedbackSent && <span className="feedback-success-text">Your choice helps train smarter predictions</span>}
+              {/* ROUTE COMPARISON */}
+              {viaRouteInfo && routeInfo && !activeArea && (
+                <div className="ios-glass-panel">
+                  <div className="routes-section-header">
+                    <h2 className="section-title" style={{ fontSize: '1.05rem' }}><Route size={18} color="#ff9500" /> Route Comparison</h2>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <button className={`compare-card ${selectedChoice === 'ai' ? 'active-ai' : ''}`} onClick={() => switchToPath('ai')}>
+                      <div className="compare-card-header">
+                        <div className="compare-icon-wrap" style={{ background: 'rgba(52, 199, 89, 0.12)', width: '36px', height: '36px', borderRadius: '10px' }}>🚀</div>
+                        <div className="compare-title-group">
+                          <span className="compare-title" style={{ fontSize: '0.95rem' }}>Direct Route</span>
+                          <span className="compare-desc">AI-optimized</span>
+                        </div>
+                        {selectedChoice === 'ai' && <span className="compare-active-badge">Active</span>}
+                      </div>
+                      <div className="compare-stats-grid">
+                        <div className="compare-stat-item"><span className="compare-stat-value" style={{ color: 'var(--accent-green)', fontSize: '1.05rem' }}>{routeInfo.ai_distance}</span><span className="compare-stat-label">km</span></div>
+                        <div className="compare-stat-item"><span className="compare-stat-value" style={{ color: 'var(--accent-green)', fontSize: '1.05rem' }}>{routeInfo.ai_time}</span><span className="compare-stat-label">min</span></div>
+                        <div className="compare-stat-item"><span className="compare-stat-value" style={{ fontSize: '1.05rem' }}>{(100 - routeInfo.ai_time / 3).toFixed(0)}%</span><span className="compare-stat-label">Eco</span></div>
+                        <div className="compare-stat-item"><span className="compare-stat-value" style={{ fontSize: '1.05rem' }}>A+</span><span className="compare-stat-label">Safety</span></div>
+                      </div>
+                    </button>
+
+                    <button className={`compare-card ${selectedChoice === 'via_stops' ? 'active-via' : ''}`} onClick={() => switchToPath('via_stops')}>
+                      <div className="compare-card-header">
+                        <div className="compare-icon-wrap" style={{ background: 'rgba(255, 159, 10, 0.12)', width: '36px', height: '36px', borderRadius: '10px' }}>📍</div>
+                        <div className="compare-title-group">
+                          <span className="compare-title" style={{ fontSize: '0.95rem' }}>Via Stops</span>
+                          <span className="compare-desc">Through waypoints</span>
+                        </div>
+                        {selectedChoice === 'via_stops' && <span className="compare-active-badge" style={{ background: 'rgba(255, 159, 10, 0.15)', color: 'var(--accent-orange)' }}>Active</span>}
+                      </div>
+                      <div className="compare-stats-grid">
+                        <div className="compare-stat-item"><span className="compare-stat-value" style={{ color: 'var(--accent-orange)', fontSize: '1.05rem' }}>{viaRouteInfo.ai_distance}</span><span className="compare-stat-label">km</span></div>
+                        <div className="compare-stat-item"><span className="compare-stat-value" style={{ color: 'var(--accent-orange)', fontSize: '1.05rem' }}>{viaRouteInfo.ai_time}</span><span className="compare-stat-label">min</span></div>
+                        <div className="compare-stat-item"><span className="compare-stat-value" style={{ fontSize: '1.05rem' }}>{(100 - viaRouteInfo.ai_time / 3).toFixed(0)}%</span><span className="compare-stat-label">Eco</span></div>
+                        <div className="compare-stat-item"><span className="compare-stat-value" style={{ fontSize: '1.05rem' }}>A</span><span className="compare-stat-label">Safety</span></div>
+                      </div>
+                      <div className="compare-delta-row">
+                        <div className={`delta-tag ${viaRouteInfo.ai_distance > routeInfo.ai_distance ? 'slower' : 'faster'}`}>
+                          {viaRouteInfo.ai_distance > routeInfo.ai_distance ? `+${(viaRouteInfo.ai_distance - routeInfo.ai_distance).toFixed(1)} km` : viaRouteInfo.ai_distance < routeInfo.ai_distance ? `-${(routeInfo.ai_distance - viaRouteInfo.ai_distance).toFixed(1)} km` : 'Same'}
+                        </div>
+                        <div className={`delta-tag ${viaRouteInfo.ai_time > routeInfo.ai_time ? 'slower' : 'faster'}`}>
+                          {viaRouteInfo.ai_time > routeInfo.ai_time ? `+${(viaRouteInfo.ai_time - routeInfo.ai_time).toFixed(0)} min` : viaRouteInfo.ai_time < routeInfo.ai_time ? `-${(routeInfo.ai_time - viaRouteInfo.ai_time).toFixed(0)} min` : 'Same'}
+                        </div>
+                      </div>
+                      {viaRouteInfo.stops && viaRouteInfo.stops.length > 0 && (
+                        <div className="compare-stops-list">
+                          <span className="compare-stops-label">Stops:</span>
+                          {viaRouteInfo.stops.map((stop, i) => (
+                            <span key={i} className="compare-stop-chip">{stop.split('(')[0].trim()}</span>
+                          ))}
+                        </div>
+                      )}
+                    </button>
+                  </div>
+                  {selectedChoice && (
+                    <div className="route-feedback-row">
+                      <button className="ios-button preferred-btn" onClick={submitFeedback} disabled={feedbackSent} style={{ background: feedbackSent ? '#34c759' : '#007aff', color: '#fff', border: 'none' }}>
+                        <ThumbsUp size={16} /> {feedbackSent ? 'Saved ✓' : 'Set Preferred'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
+          </div>
+        </>
+      )}
 
-          <div className="ios-glass-panel">
-            <h2 className="section-title">Traffic Density Over Time</h2>
+      {/* ========== ANALYTICS TAB ========== */}
+      {activeTab === 'analytics' && (
+        <div className="map-tab-overlay">
+          <div className="ios-glass-panel tab-panel-animate">
+            <h2 className="section-title"><BarChart3 size={20} color="var(--accent-blue)" /> Traffic Density Over Time</h2>
             <TrafficChart trafficData={filteredTrafficData} predictions={predictions} />
           </div>
         </div>
+      )}
 
-        <div className="side-panel">
-          <div className="ios-glass-panel"><AnomalyAlert anomalies={filteredAnomalies} /></div>
-          <div className="ios-glass-panel"><LiveTicker trafficData={filteredTrafficData} /></div>
-          {user && <div className="ios-glass-panel"><HistoryPanel onSelectRoute={(path) => handleRouteSelect([path[0], path[path.length - 1]])} /></div>}
+      {/* ========== ALERTS TAB ========== */}
+      {activeTab === 'alerts' && (
+        <div className="map-tab-overlay">
+          <div className="ios-glass-panel tab-panel-animate">
+            <AnomalyAlert anomalies={filteredAnomalies} />
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ========== LIVE FEED TAB ========== */}
+      {activeTab === 'live' && (
+        <div className="map-tab-overlay">
+          <div className="ios-glass-panel tab-panel-animate">
+            <LiveTicker trafficData={filteredTrafficData} />
+          </div>
+        </div>
+      )}
+
+      {/* ========== HISTORY TAB ========== */}
+      {activeTab === 'history' && (
+        <div className="map-tab-overlay">
+          <div className="ios-glass-panel tab-panel-animate">
+            {user ? (
+              <HistoryPanel onSelectRoute={(path) => handleRouteSelect([path[0], path[path.length - 1]])} />
+            ) : (
+              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
+                <Clock size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+                <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>Login to view your route history</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Global Modals */}
       <IncidentModal isOpen={isIncidentModalOpen} onClose={() => setIsIncidentModalOpen(false)} citiesDb={CITIES_DB} apiUrl={API_URL} />
       <EmergencyAuthModal isOpen={isEmergencyAuthOpen} onClose={() => setIsEmergencyAuthOpen(false)} onAuthSuccess={refreshUser} apiUrl={API_URL} token={token} />
-    </div>
+    </>
   );
 };
 

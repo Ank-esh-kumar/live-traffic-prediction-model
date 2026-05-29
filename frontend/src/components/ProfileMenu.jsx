@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
-import { User, LogOut, Settings, Sun, Moon, Zap, ChevronDown, Monitor, LayoutGrid } from 'lucide-react';
+import { User, LogOut, Settings, Sun, Moon, Zap, ChevronDown, Monitor, LayoutGrid, KeyRound } from 'lucide-react';
+import ChangePasswordModal from './ChangePasswordModal';
 
 const ProfileMenu = ({ isLightTheme, setIsLightTheme, highGraphics, setHighGraphics, onOpenPrefs }) => {
   const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [isChangePwOpen, setIsChangePwOpen] = useState(false);
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -22,58 +25,131 @@ const ProfileMenu = ({ isLightTheme, setIsLightTheme, highGraphics, setHighGraph
       <button 
         className={`profile-trigger ${isOpen ? 'active' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
+        style={{ padding: '0.4rem', gap: '0.5rem' }}
       >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '6px' }}>
+          <div id="global-connection-dot" className="map-connection-dot disconnected" title="Offline" />
+          <span id="global-connection-text" style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Offline</span>
+        </div>
         <div className="avatar-circle">
           {user?.username?.charAt(0).toUpperCase() || <User size={18} />}
         </div>
-        <span className="username-text">{user?.username}</span>
-        <ChevronDown size={16} className={`chevron ${isOpen ? 'rotate' : ''}`} />
+        <ChevronDown size={16} className={`chevron ${isOpen ? 'rotate' : ''}`} style={{ marginRight: '4px' }} />
       </button>
 
       {isOpen && (
-        <div className="profile-dropdown glass-panel">
-          <div className="dropdown-header">
-            <p className="user-email">{user?.email}</p>
-            <div className="user-status">
-              <span className="status-dot"></span> Online
+        <>
+          {/* Desktop Dropdown */}
+          <div className="desktop-dropdown">
+            <div className="profile-dropdown glass-panel">
+              <div className="dropdown-header">
+                <p className="user-email">{user?.email}</p>
+                <div className="user-status">
+                  <span className="status-dot"></span> Online
+                </div>
+              </div>
+
+              <div className="dropdown-divider"></div>
+
+              <div className="dropdown-section">
+                <p className="section-label">Appearance & Performance</p>
+                <button className="menu-item" onClick={() => setIsLightTheme(!isLightTheme)}>
+                  {isLightTheme ? <Moon size={18} /> : <Sun size={18} />}
+                  <span>{isLightTheme ? 'Switch to Dark' : 'Switch to Light'}</span>
+                </button>
+                <button className="menu-item" onClick={() => setHighGraphics(!highGraphics)}>
+                  <Monitor size={18} />
+                  <div className="item-content">
+                    <span>Graphics Mode</span>
+                    <small>{highGraphics ? 'High Fidelity' : 'Power Saving'}</small>
+                  </div>
+                  <div className={`status-badge ${highGraphics ? 'blue' : 'gray'}`}>
+                    {highGraphics ? '✨' : '🔋'}
+                  </div>
+                </button>
+              </div>
+
+              <div className="dropdown-divider"></div>
+
+              <div className="dropdown-section">
+                <p className="section-label">Account</p>
+                <button className="menu-item" onClick={() => { onOpenPrefs(); setIsOpen(false); }}>
+                  <Settings size={18} />
+                  <span>Preferences & Permissions</span>
+                </button>
+                <button className="menu-item" onClick={() => { setIsChangePwOpen(true); setIsOpen(false); }}>
+                  <KeyRound size={18} />
+                  <span>Change Password</span>
+                </button>
+                <button className="menu-item logout-item" onClick={logout}>
+                  <LogOut size={18} />
+                  <span>Sign Out</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="dropdown-divider"></div>
+          {/* Mobile Full-Screen Overlay Portal */}
+          {createPortal(
+            <div className="mobile-dropdown-overlay" onClick={() => setIsOpen(false)}>
+              <div className="profile-dropdown glass-panel" onClick={(e) => e.stopPropagation()}>
+                <div className="dropdown-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p className="user-email">{user?.email}</p>
+                    <div className="user-status">
+                      <span className="status-dot"></span> Online
+                    </div>
+                  </div>
+                  <button onClick={() => setIsOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.5rem' }}>
+                    ✕
+                  </button>
+                </div>
 
-          <div className="dropdown-section">
-            <p className="section-label">Appearance & Performance</p>
-            <button className="menu-item" onClick={() => setIsLightTheme(!isLightTheme)}>
-              {isLightTheme ? <Moon size={18} /> : <Sun size={18} />}
-              <span>{isLightTheme ? 'Switch to Dark' : 'Switch to Light'}</span>
-            </button>
-            <button className="menu-item" onClick={() => setHighGraphics(!highGraphics)}>
-              <Monitor size={18} />
-              <div className="item-content">
-                <span>Graphics Mode</span>
-                <small>{highGraphics ? 'High Fidelity' : 'Power Saving'}</small>
+                <div className="dropdown-divider"></div>
+
+                <div className="dropdown-section">
+                  <p className="section-label">Appearance & Performance</p>
+                  <button className="menu-item" onClick={() => setIsLightTheme(!isLightTheme)}>
+                    {isLightTheme ? <Moon size={18} /> : <Sun size={18} />}
+                    <span>{isLightTheme ? 'Switch to Dark' : 'Switch to Light'}</span>
+                  </button>
+                  <button className="menu-item" onClick={() => setHighGraphics(!highGraphics)}>
+                    <Monitor size={18} />
+                    <div className="item-content">
+                      <span>Graphics Mode</span>
+                      <small>{highGraphics ? 'High Fidelity' : 'Power Saving'}</small>
+                    </div>
+                    <div className={`status-badge ${highGraphics ? 'blue' : 'gray'}`}>
+                      {highGraphics ? '✨' : '🔋'}
+                    </div>
+                  </button>
+                </div>
+
+                <div className="dropdown-divider"></div>
+
+                <div className="dropdown-section">
+                  <p className="section-label">Account</p>
+                  <button className="menu-item" onClick={() => { onOpenPrefs(); setIsOpen(false); }}>
+                    <Settings size={18} />
+                    <span>Preferences & Permissions</span>
+                  </button>
+                  <button className="menu-item" onClick={() => { setIsChangePwOpen(true); setIsOpen(false); }}>
+                    <KeyRound size={18} />
+                    <span>Change Password</span>
+                  </button>
+                  <button className="menu-item logout-item" onClick={logout}>
+                    <LogOut size={18} />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
               </div>
-              <div className={`status-badge ${highGraphics ? 'blue' : 'gray'}`}>
-                {highGraphics ? '✨' : '🔋'}
-              </div>
-            </button>
-          </div>
-
-          <div className="dropdown-divider"></div>
-
-          <div className="dropdown-section">
-            <p className="section-label">Account</p>
-            <button className="menu-item" onClick={() => { onOpenPrefs(); setIsOpen(false); }}>
-              <Settings size={18} />
-              <span>Preferences & Permissions</span>
-            </button>
-            <button className="menu-item logout-item" onClick={logout}>
-              <LogOut size={18} />
-              <span>Sign Out</span>
-            </button>
-          </div>
-        </div>
+            </div>,
+            document.body
+          )}
+        </>
       )}
+
+      <ChangePasswordModal isOpen={isChangePwOpen} onClose={() => setIsChangePwOpen(false)} />
 
       <style>{`
         .profile-menu-container {
@@ -140,11 +216,64 @@ const ProfileMenu = ({ isLightTheme, setIsLightTheme, highGraphics, setHighGraph
           width: 280px;
           padding: 1rem 0;
           border-radius: 20px;
-          animation: dropdownIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          animation: dropdownIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
         @keyframes dropdownIn {
           from { opacity: 0; transform: translateY(-10px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .desktop-dropdown {
+          display: block;
+        }
+
+        .mobile-dropdown-overlay {
+          display: none;
+        }
+
+        @media (max-width: 768px) {
+          .desktop-dropdown {
+            display: none;
+          }
+
+          .mobile-dropdown-overlay {
+            display: flex;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 99999;
+            align-items: center;
+            justify-content: center;
+            animation: fadeInOverlay 0.2s ease-out forwards;
+          }
+
+          .mobile-dropdown-overlay .profile-dropdown {
+            position: relative;
+            top: auto;
+            right: auto;
+            left: auto;
+            width: 90vw;
+            max-width: 400px;
+            transform: none;
+            animation: dropdownInMobile 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          }
+        }
+
+        @keyframes fadeInOverlay {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        @keyframes dropdownInMobile {
+          from { opacity: 0; transform: translateY(20px) scale(0.95); }
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
 

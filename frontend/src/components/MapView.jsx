@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Polygon, useMap, Circle, Tooltip } from 'react-leaflet';
+import { Map as MapIcon, Zap } from 'lucide-react';
 import L from 'leaflet';
 
 const CITIES = [
@@ -159,23 +160,87 @@ const createIncidentIcon = () => {
   });
 };
 
+const TOMTOM_KEY = import.meta.env.VITE_TOMTOM_API_KEY || '';
+
+// Generate a smooth curved path between two [lat,lng] points.
+// Used for area explorer roads — avoids costly routing API calls.
+const generateCurvedPath = (start, end, numPoints = 12) => {
+  const [lat1, lng1] = start;
+  const [lat2, lng2] = end;
+
+  // For very short distances, just return a straight line
+  const dist = Math.hypot(lat2 - lat1, lng2 - lng1);
+  if (dist < 0.005) return [start, end];
+
+  // Create a control point offset perpendicular to the line for a natural curve
+  const midLat = (lat1 + lat2) / 2;
+  const midLng = (lng1 + lng2) / 2;
+  const perpLat = -(lng2 - lng1);
+  const perpLng = lat2 - lat1;
+  const offsetScale = 0.08; // Subtle curve
+  const ctrlLat = midLat + perpLat * offsetScale;
+  const ctrlLng = midLng + perpLng * offsetScale;
+
+  // Quadratic bezier interpolation
+  const points = [];
+  for (let i = 0; i <= numPoints; i++) {
+    const t = i / numPoints;
+    const u = 1 - t;
+    const lat = u * u * lat1 + 2 * u * t * ctrlLat + t * t * lat2;
+    const lng = u * u * lng1 + 2 * u * t * ctrlLng + t * t * lng2;
+    points.push([lat, lng]);
+  }
+  return points;
+};
+
 const fetchFullOSRMSegments = async (pathNodes, altIndex = 0) => {
   if (!pathNodes || pathNodes.length < 2) return [];
   const cities = pathNodes.map(id => CITIES.find(c => c.id === id)).filter(Boolean);
   if (cities.length < 2) return [];
 
-  const coordsString = cities.map(c => `${c.lng},${c.lat}`).join(';');
+  // TomTom format: lat1,lng1:lat2,lng2:...
+  const tomtomCoords = cities.map(c => `${c.lat},${c.lng}`).join(':');
 
   try {
-    // Fetch alternatives=3 so we can get smooth, native alternate highways without forcing graph nodes
-    const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=false&geometries=geojson&steps=true&alternatives=3`);
+    const response = await fetch(
+      `https://api.tomtom.com/routing/1/calculateRoute/${tomtomCoords}/json?key=${TOMTOM_KEY}&traffic=true&routeType=fastest&travelMode=car&maxAlternatives=2`
+    );
     const data = await response.json();
 
     if (data.routes && data.routes.length > 0) {
-      // Pick the alternative route requested, or fallback to the first one
       const routeIdx = Math.min(altIndex, data.routes.length - 1);
       const selectedRoute = data.routes[routeIdx];
-      
+
+      if (selectedRoute.legs) {
+        const segments = [];
+        selectedRoute.legs.forEach((leg, i) => {
+          const positions = leg.points
+            ? leg.points.map(p => [p.latitude, p.longitude])
+            : [];
+          if (positions.length === 0) {
+            positions.push([cities[i].lat, cities[i].lng], [cities[i + 1].lat, cities[i + 1].lng]);
+          }
+          segments.push({
+            startId: pathNodes[i],
+            destinationId: pathNodes[i + 1] || pathNodes[i],
+            positions
+          });
+        });
+        return segments;
+      }
+    }
+  } catch (err) {
+    console.warn('TomTom full route failed, falling back to OSRM', err);
+  }
+
+  // OSRM fallback
+  try {
+    const osrmCoords = cities.map(c => `${c.lng},${c.lat}`).join(';');
+    const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${osrmCoords}?overview=false&geometries=geojson&steps=true&alternatives=3`);
+    const data = await response.json();
+    if (data.routes && data.routes.length > 0) {
+      const routeIdx = Math.min(altIndex, data.routes.length - 1);
+      const selectedRoute = data.routes[routeIdx];
       if (selectedRoute.legs) {
         const segments = [];
         selectedRoute.legs.forEach((leg, i) => {
@@ -187,24 +252,19 @@ const fetchFullOSRMSegments = async (pathNodes, altIndex = 0) => {
               }
             });
           }
-          // Fallback to straight line if geometry is missing for some reason
           if (positions.length === 0) {
             positions.push([cities[i].lat, cities[i].lng], [cities[i + 1].lat, cities[i + 1].lng]);
           }
-          segments.push({
-            startId: pathNodes[i],
-            destinationId: pathNodes[i + 1] || pathNodes[i], // The node this segment leads to
-            positions
-          });
+          segments.push({ startId: pathNodes[i], destinationId: pathNodes[i + 1] || pathNodes[i], positions });
         });
         return segments;
       }
     }
-  } catch (err) {
-    console.error("OSRM full route fetch failed", err);
+  } catch (err2) {
+    console.error('OSRM fallback also failed', err2);
   }
 
-  // Fallback: Just return straight lines
+  // Final fallback: straight lines
   const fallback = [];
   for (let i = 0; i < cities.length - 1; i++) {
     fallback.push({
@@ -216,32 +276,68 @@ const fetchFullOSRMSegments = async (pathNodes, altIndex = 0) => {
   return fallback;
 };
 
-  const osrmCache = new Map();
+  const loadCache = () => {
+    try {
+      const data = localStorage.getItem('smart_traffic_route_cache');
+      return data ? new Map(JSON.parse(data)) : new Map();
+    } catch (e) { return new Map(); }
+  };
+  const routeCache = loadCache();
+  
+  const saveCache = () => {
+    try { localStorage.setItem('smart_traffic_route_cache', JSON.stringify([...routeCache])); } catch (e) {}
+  };
 
   const fetchSimpleOSRMRoute = async (pathNodes, altIndex = 0) => {
     if (!pathNodes || pathNodes.length < 2) return [];
     const cacheKey = pathNodes.join('|') + '|alt:' + altIndex;
-    if (osrmCache.has(cacheKey)) return osrmCache.get(cacheKey);
+    if (routeCache.has(cacheKey)) return routeCache.get(cacheKey);
 
     const cities = pathNodes.map(id => CITIES.find(c => c.id === id)).filter(Boolean);
     if (cities.length < 2) return [];
 
-    const coordsString = cities.map(c => `${c.lng},${c.lat}`).join(';');
+    // TomTom primary
     try {
+      const tomtomCoords = cities.map(c => `${c.lat},${c.lng}`).join(':');
+      const response = await fetch(
+        `https://api.tomtom.com/routing/1/calculateRoute/${tomtomCoords}/json?key=${TOMTOM_KEY}&traffic=true&routeType=fastest&travelMode=car&maxAlternatives=2`
+      );
+      const data = await response.json();
+      if (data.routes && data.routes.length > 0) {
+        const routeIdx = Math.min(altIndex, data.routes.length - 1);
+        const positions = data.routes[routeIdx].legs.flatMap(leg =>
+          (leg.points || []).map(p => [p.latitude, p.longitude])
+        );
+        if (positions.length > 0) {
+          routeCache.set(cacheKey, positions);
+          saveCache();
+          return positions;
+        }
+      }
+    } catch (err) {
+      console.warn('TomTom simple route failed, falling back to OSRM', err);
+    }
+
+    // OSRM fallback
+    try {
+      const coordsString = cities.map(c => `${c.lng},${c.lat}`).join(';');
       const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson&alternatives=3`);
       const data = await response.json();
       if (data.routes && data.routes.length > 0) {
         const routeIdx = Math.min(altIndex, data.routes.length - 1);
         const positions = data.routes[routeIdx].geometry.coordinates.map(c => [c[1], c[0]]);
-        osrmCache.set(cacheKey, positions);
+        routeCache.set(cacheKey, positions);
+        saveCache();
         return positions;
       }
     } catch (err) {
-      console.error("OSRM simple route fetch failed", err);
+      console.error('OSRM fallback also failed', err);
     }
-    // Fallback straight lines
+
+    // Final fallback: straight lines
     const fallback = cities.map(c => [c.lat, c.lng]);
-    osrmCache.set(cacheKey, fallback);
+    routeCache.set(cacheKey, fallback);
+    saveCache();
     return fallback;
   };
 
@@ -306,7 +402,7 @@ const fetchFullOSRMSegments = async (pathNodes, altIndex = 0) => {
     });
   };
 
-  const MapView = ({ trafficData, activeRoutePath, shortestPath, routeInfo, allRoutes, activeArea, isLightTheme, routeEndpoints, highGraphics, isEmergencyActive, preferredMode, selectedChoice, activeAltIndex, incidents = [] }) => {
+  const MapView = ({ trafficData, activeRoutePath, shortestPath, routeInfo, allRoutes, activeArea, isLightTheme, routeEndpoints, highGraphics, isEmergencyActive, preferredMode, selectedChoice, activeAltIndex, incidents = [], modelAccuracy }) => {
     const [routeGeometries, setRouteGeometries] = useState([]);
     const [shortestLine, setShortestLine] = useState([]);
     const [altRouteLines, setAltRouteLines] = useState([]); // [{positions, distance, is_ai, is_shortest, path}]
@@ -343,18 +439,32 @@ const fetchFullOSRMSegments = async (pathNodes, altIndex = 0) => {
             } else {
               setAreaBoundary(null);
             }
+            // Fetch real-world roads but batch them to avoid TomTom API rate limits (5 QPS limit)
+            const segments = [];
+            const batchSize = 3; 
 
-            const promises = areaEdges.map(async (edge) => {
-              const positions = await fetchSimpleOSRMRoute([edge.start, edge.end]);
-              return {
-                startId: edge.start,
-                destinationId: edge.end,
-                positions: positions
-                // Removed static density so it reads live from trafficData
-              };
-            });
-            const segments = await Promise.all(promises);
-            setRouteGeometries(segments);
+            for (let i = 0; i < areaEdges.length; i += batchSize) {
+              const batch = areaEdges.slice(i, i + batchSize);
+              const promises = batch.map(async (edge) => {
+                const positions = await fetchSimpleOSRMRoute([edge.start, edge.end]);
+                return {
+                  startId: edge.start,
+                  destinationId: edge.end,
+                  positions
+                };
+              });
+              
+              const results = await Promise.all(promises);
+              segments.push(...results);
+              
+              // Only delay if there are more edges and we are actually fetching from network
+              // (fetchSimpleOSRMRoute handles caching instantly, but we delay just in case)
+              if (i + batchSize < areaEdges.length) {
+                await new Promise(resolve => setTimeout(resolve, 300));
+              }
+            }
+
+            setRouteGeometries(segments.filter(s => s && s.positions && s.positions.length > 0));
             setShortestLine([]);
           } else {
             // Normal A-to-B Routing Mode
@@ -499,8 +609,8 @@ const fetchFullOSRMSegments = async (pathNodes, altIndex = 0) => {
     const centerLng = 77.5;
 
     const tileUrl = isLightTheme
-      ? "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+      ? `https://api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?key=${TOMTOM_KEY}&tileSize=256`
+      : `https://api.tomtom.com/map/1/tile/basic/night/{z}/{x}/{y}.png?key=${TOMTOM_KEY}&tileSize=256`;
 
     return (
       <div className="map-container" style={{ position: 'relative' }}>
@@ -536,14 +646,14 @@ const fetchFullOSRMSegments = async (pathNodes, altIndex = 0) => {
           center={[centerLat, centerLng]}
           zoom={8}
           style={{ height: '100%', width: '100%', background: isLightTheme ? '#f0f2f5' : '#0f172a' }}
-          zoomControl={true}
+          zoomControl={false}
           scrollWheelZoom={true}
         >
           <MapBoundsController activeArea={activeArea} activeRoutePath={activeRoutePath} shortestPath={shortestPath} cities={CITIES} areaBoundary={areaBoundary} setZoomLevel={setZoomLevel} />
 
           <TileLayer
             url={tileUrl}
-            attribution='&copy; OpenStreetMap contributors'
+            attribution='&copy; <a href="https://www.tomtom.com">TomTom</a>'
           />
 
           {/* Area Boundary Polygon rendering removed per user request, but areaBoundary state is still used by MapBoundsController for camera framing */}
@@ -718,7 +828,6 @@ const fetchFullOSRMSegments = async (pathNodes, altIndex = 0) => {
 
         </MapContainer>
 
-        {/* Map Legend */}
         <div style={{
           position: 'absolute',
           bottom: '20px',
@@ -726,28 +835,57 @@ const fetchFullOSRMSegments = async (pathNodes, altIndex = 0) => {
           zIndex: 1000,
           background: isLightTheme ? 'rgba(255, 255, 255, 0.85)' : 'rgba(15, 23, 42, 0.85)',
           backdropFilter: 'blur(8px)',
-          padding: legendOpen ? '1rem' : '0.5rem 0.75rem',
-          borderRadius: '8px',
+          padding: legendOpen ? '1rem' : '0.75rem',
+          borderRadius: legendOpen ? '12px' : '50%',
           border: `1px solid ${isLightTheme ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
           fontSize: '0.8rem',
           color: isLightTheme ? '#1e293b' : '#fff',
-          transition: 'all 0.25s ease',
-          cursor: 'default',
-          minWidth: legendOpen ? '160px' : 'auto'
-        }}>
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          cursor: 'pointer',
+          minWidth: legendOpen ? '200px' : '44px',
+          height: legendOpen ? 'auto' : '44px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: legendOpen ? 'stretch' : 'center',
+          justifyContent: legendOpen ? 'flex-start' : 'center',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+          overflow: 'hidden'
+        }} onClick={() => !legendOpen && setLegendOpen(true)}>
+          {/* Header Row */}
           <div 
-            onClick={() => setLegendOpen(prev => !prev)} 
+            onClick={(e) => { if (legendOpen) { e.stopPropagation(); setLegendOpen(false); } }} 
             style={{ 
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-              gap: '0.5rem', fontWeight: 'bold', cursor: 'pointer', userSelect: 'none',
-              marginBottom: legendOpen ? '0.5rem' : 0
+              display: 'flex', alignItems: 'center', justifyContent: legendOpen ? 'space-between' : 'center', 
+              gap: '0.5rem', fontWeight: 'bold', userSelect: 'none',
+              marginBottom: legendOpen ? '0.75rem' : 0,
+              width: '100%'
             }}
           >
-            <span>Map Legend</span>
-            <span style={{ fontSize: '0.7rem', opacity: 0.6, transition: 'transform 0.25s', transform: legendOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <MapIcon size={18} color={isLightTheme ? '#3b82f6' : '#60a5fa'} />
+              {legendOpen && <span>Map Legend</span>}
+            </div>
+            {legendOpen && <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>▼</span>}
           </div>
+          
+          {/* Legend Content */}
           {legendOpen && (
-            <>
+            <div style={{ animation: 'fadeIn 0.3s ease', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {/* AI Precision Section */}
+              <div style={{ 
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '0.5rem', background: 'rgba(59, 130, 246, 0.1)', 
+                borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)',
+                marginBottom: '0.5rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Zap size={14} color="#3b82f6" />
+                  <span style={{ fontWeight: '600', color: isLightTheme ? '#2563eb' : '#93c5fd' }}>AI Precision</span>
+                </div>
+                <span style={{ fontWeight: 'bold', color: isLightTheme ? '#1d4ed8' : '#bfdbfe' }}>
+                  {modelAccuracy?.accuracy ? `${modelAccuracy.accuracy.toFixed(1)}%` : '--%'}
+                </span>
+              </div>
           {activeArea ? (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
@@ -808,7 +946,7 @@ const fetchFullOSRMSegments = async (pathNodes, altIndex = 0) => {
               </>
             );
           })()}
-            </>
+            </div>
           )}
         </div>
       </div>

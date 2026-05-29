@@ -118,8 +118,34 @@ export const AuthProvider = ({ children }) => {
     return response.ok;
   };
 
+  const requestPasswordReset = async (email) => {
+    const response = await fetch(`${API_URL}/api/auth/request-password-reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to request OTP');
+    }
+    return await response.json();
+  };
+
+  const resetPasswordWithOtp = async (email, otp, newPassword) => {
+    const response = await fetch(`${API_URL}/api/auth/reset-password-with-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp, new_password: newPassword })
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to reset password');
+    }
+    return await response.json();
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, updatePreferences, saveToHistory, refreshUser: fetchUser }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, updatePreferences, saveToHistory, refreshUser: fetchUser, requestPasswordReset, resetPasswordWithOtp }}>
       {children}
     </AuthContext.Provider>
   );

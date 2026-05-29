@@ -160,3 +160,106 @@ async def request_emergency_access(request: EmergencyAuthRequest, current_user: 
         raise HTTPException(status_code=500, detail="Failed to update authorization")
         
     return {"status": "success", "message": "Emergency access granted"}
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+@router.post("/change-password")
+async def change_password(request: ChangePasswordRequest, current_user: dict = Depends(get_current_user)):
+    """Allows an authenticated user to change their password after verifying the current one."""
+    from database import get_db  # lazy import to avoid circular deps
+    db = get_db()
+
+    if not verify_password(request.current_password, current_user["hashed_password"]):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+    if len(request.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+
+    new_hash = get_password_hash(request.new_password)
+
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    db["users"].update_one(
+        {"email": current_user["email"]},
+        {"$set": {"hashed_password": new_hash}}
+    )
+    return {"status": "success", "message": "Password updated successfully"}
+
+class VerifyPasswordRequest(BaseModel):
+    password: str
+
+@router.post("/verify-password")
+async def verify_current_password(request: VerifyPasswordRequest, current_user: dict = Depends(get_current_user)):
+    """Read-only endpoint: verifies the user's current password is correct.
+    Used as a pre-check before showing the new-password form.
+    Returns 200 on match, 401 on mismatch — never modifies anything."""
+    if not verify_password(request.password, current_user["hashed_password"]):
+        raise HTTPException(status_code=401, detail="Password is incorrect")
+    return {"status": "verified", "message": "Identity confirmed"}
+
+class PasswordResetRequest(BaseModel):
+    email: str
+
+@router.post("/request-password-reset")
+async def request_password_reset(request: PasswordResetRequest):
+    import random
+    from database import set_reset_otp
+    
+    user = get_user_by_email(request.email)
+    if not user:
+        # Return success anyway to prevent email enumeration
+        return {"status": "success", "message": "If that email exists, an OTP has been sent."}
+        
+    otp = str(random.randint(100000, 999999))
+    expires_at = (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+    
+    success = set_reset_otp(request.email, otp, expires_at)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to generate OTP")
+        
+    # Simulate sending email by logging to console
+    print(f"\n{'='*50}\n[SIMULATED EMAIL] OTP for {request.email}: {otp}\n{'='*50}\n")
+    
+    return {"status": "success", "message": "If that email exists, an OTP has been sent."}
+
+class PasswordResetConfirm(BaseModel):
+    email: str
+    otp: str
+    new_password: str
+
+@router.post("/reset-password-with-otp")
+async def reset_password_with_otp(request: PasswordResetConfirm):
+    from database import get_db, clear_reset_otp
+    db = get_db()
+    
+    user = get_user_by_email(request.email)
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid OTP or email")
+        
+    if not user.get("reset_otp") or user.get("reset_otp") != request.otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+        
+    if user.get("reset_otp_expiry"):
+        expiry = datetime.fromisoformat(user.get("reset_otp_expiry"))
+        if datetime.utcnow() > expiry:
+            raise HTTPException(status_code=400, detail="OTP has expired")
+            
+    if len(request.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+        
+    new_hash = get_password_hash(request.new_password)
+    
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+        
+    db["users"].update_one(
+        {"email": request.email},
+        {"$set": {"hashed_password": new_hash}}
+    )
+    
+    clear_reset_otp(request.email)
+    
+    return {"status": "success", "message": "Password has been reset successfully"}

@@ -168,6 +168,28 @@ def create_user(user_data):
     user_data["_id"] = result.inserted_id
     return user_data
 
+def set_reset_otp(email, otp, expires_at):
+    """Set a password reset OTP for a user."""
+    db = get_db()
+    if db is None:
+        return False
+    result = db.users.update_one(
+        {"email": email},
+        {"$set": {"reset_otp": otp, "reset_otp_expiry": expires_at}}
+    )
+    return result.modified_count > 0
+
+def clear_reset_otp(email):
+    """Clear the password reset OTP for a user."""
+    db = get_db()
+    if db is None:
+        return False
+    db.users.update_one(
+        {"email": email},
+        {"$unset": {"reset_otp": "", "reset_otp_expiry": ""}}
+    )
+    return True
+
 def update_user_preferences(email, preferences):
     """Update user preferences."""
     db = get_db()

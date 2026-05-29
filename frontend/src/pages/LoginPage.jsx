@@ -1,19 +1,26 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Mail, Lock, User, LogIn, UserPlus, ShieldCheck, Activity } from 'lucide-react';
+import { Mail, Lock, User, LogIn, UserPlus, ShieldCheck, Activity, KeyRound, ArrowLeft } from 'lucide-react';
 
 const LoginPage = () => {
-  const { login, register } = useAuth();
+  const { login, register, requestPasswordReset, resetPasswordWithOtp } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccessMsg('');
     setLoading(true);
 
     try {
@@ -21,6 +28,35 @@ const LoginPage = () => {
         await login(email, password);
       } else {
         await register(username, email, password);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPasswordSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccessMsg('');
+    setLoading(true);
+
+    try {
+      if (!otpSent) {
+        await requestPasswordReset(email);
+        setOtpSent(true);
+        setSuccessMsg('If the email exists, an OTP has been sent.');
+      } else {
+        await resetPasswordWithOtp(email, otp, newPassword);
+        setSuccessMsg('Password reset successful. You can now login.');
+        setTimeout(() => {
+          setIsForgotPassword(false);
+          setOtpSent(false);
+          setOtp('');
+          setNewPassword('');
+          setSuccessMsg('');
+        }, 3000);
       }
     } catch (err) {
       setError(err.message);
@@ -41,30 +77,101 @@ const LoginPage = () => {
         </div>
 
         <div className="login-card glass-panel">
-          <div className="auth-toggle">
-            <button 
-              className={isLogin ? 'active' : ''} 
-              onClick={() => setIsLogin(true)}
-            >
-              Login
-            </button>
-            <button 
-              className={!isLogin ? 'active' : ''} 
-              onClick={() => setIsLogin(false)}
-            >
-              Sign Up
-            </button>
-          </div>
+          {!isForgotPassword && (
+            <div className="auth-toggle">
+              <button 
+                className={isLogin ? 'active' : ''} 
+                onClick={() => setIsLogin(true)}
+              >
+                Login
+              </button>
+              <button 
+                className={!isLogin ? 'active' : ''} 
+                onClick={() => setIsLogin(false)}
+              >
+                Sign Up
+              </button>
+            </div>
+          )}
 
           <div className="auth-header">
-            <h2>{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
-            <p>{isLogin ? 'Enter your credentials to access your routes' : 'Join the network for personalized predictions'}</p>
+            <h2>{isForgotPassword ? (otpSent ? 'Reset Password' : 'Forgot Password') : (isLogin ? 'Welcome Back' : 'Create Account')}</h2>
+            <p>{isForgotPassword ? (otpSent ? 'Enter the OTP and your new password' : 'Enter your email to receive an OTP') : (isLogin ? 'Enter your credentials to access your routes' : 'Join the network for personalized predictions')}</p>
           </div>
 
           {error && <div className="auth-error">{error}</div>}
+          {successMsg && <div className="auth-success">{successMsg}</div>}
 
-          <form onSubmit={handleSubmit} className="auth-form">
-            {!isLogin && (
+          {isForgotPassword ? (
+            <form onSubmit={handleForgotPasswordSubmit} className="auth-form">
+              <div className="input-group">
+                <label><Mail size={16} /> Email Address</label>
+                <div className="input-wrapper">
+                  <input 
+                    type="email" 
+                    value={email} 
+                    onChange={(e) => setEmail(e.target.value)} 
+                    required 
+                    placeholder="name@example.com"
+                    disabled={otpSent}
+                  />
+                </div>
+              </div>
+
+              {otpSent && (
+                <>
+                  <div className="input-group">
+                    <label><KeyRound size={16} /> Enter OTP</label>
+                    <div className="input-wrapper">
+                      <input 
+                        type="text" 
+                        value={otp} 
+                        onChange={(e) => setOtp(e.target.value)} 
+                        required 
+                        placeholder="6-digit OTP"
+                      />
+                    </div>
+                  </div>
+                  <div className="input-group">
+                    <label><Lock size={16} /> New Password</label>
+                    <div className="input-wrapper">
+                      <input 
+                        type="password" 
+                        value={newPassword} 
+                        onChange={(e) => setNewPassword(e.target.value)} 
+                        required 
+                        placeholder="••••••••"
+                        minLength={6}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <button type="submit" className="auth-submit" disabled={loading}>
+                {loading ? (
+                  <div className="spinner"></div>
+                ) : (
+                  otpSent ? 'Reset Password' : 'Send OTP'
+                )}
+              </button>
+
+              <button 
+                type="button" 
+                className="back-to-login" 
+                onClick={() => {
+                  setIsForgotPassword(false);
+                  setOtpSent(false);
+                  setError('');
+                  setSuccessMsg('');
+                }}
+              >
+                <ArrowLeft size={14} /> Back to Login
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="auth-form">
+              {!isLogin && (
               <div className="input-group">
                 <label><User size={16} /> Username</label>
                 <div className="input-wrapper">
@@ -103,6 +210,11 @@ const LoginPage = () => {
                   placeholder="••••••••"
                 />
               </div>
+              {isLogin && (
+                <div className="forgot-password-link" onClick={() => setIsForgotPassword(true)}>
+                  Forgot Password?
+                </div>
+              )}
             </div>
 
             <button type="submit" className="auth-submit" disabled={loading}>
@@ -116,6 +228,7 @@ const LoginPage = () => {
               )}
             </button>
           </form>
+          )}
 
           <div className="auth-trust">
             <ShieldCheck size={14} /> 
@@ -310,6 +423,49 @@ const LoginPage = () => {
           font-size: 0.85rem;
           margin-bottom: 1.5rem;
           text-align: center;
+        }
+
+        .auth-success {
+          background: rgba(34, 197, 94, 0.1);
+          border: 1px solid rgba(34, 197, 94, 0.2);
+          color: #4ade80;
+          padding: 0.75rem;
+          border-radius: 10px;
+          font-size: 0.85rem;
+          margin-bottom: 1.5rem;
+          text-align: center;
+        }
+
+        .forgot-password-link {
+          text-align: right;
+          font-size: 0.8rem;
+          color: #3b82f6;
+          cursor: pointer;
+          margin-top: 0.25rem;
+          transition: color 0.3s;
+        }
+
+        .forgot-password-link:hover {
+          color: #60a5fa;
+          text-decoration: underline;
+        }
+
+        .back-to-login {
+          background: transparent;
+          border: none;
+          color: #94a3b8;
+          font-size: 0.9rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          margin-top: 1rem;
+          cursor: pointer;
+          transition: color 0.3s;
+        }
+
+        .back-to-login:hover {
+          color: #fff;
         }
 
         .auth-trust {

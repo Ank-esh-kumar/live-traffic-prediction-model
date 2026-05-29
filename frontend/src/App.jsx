@@ -1,6 +1,6 @@
 import React, { Suspense, useState, useEffect } from 'react'
 import { useAuth } from './context/AuthContext'
-import { Activity, Download } from 'lucide-react'
+import { Activity, Download, Map, BarChart3, AlertCircle, Radio, Clock } from 'lucide-react'
 import LoginPage from './pages/LoginPage'
 import './index.css';
 import ProfileMenu from './components/ProfileMenu';
@@ -18,6 +18,8 @@ function App() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
   const [isPrefsOpen, setIsPrefsOpen] = useState(false);
+  const [weatherClass, setWeatherClass] = useState('');
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   // PWA install prompt handler
   useEffect(() => {
@@ -58,17 +60,17 @@ function App() {
   }
 
   return (
-    <div className="app-container">
+    <div className={`app-container${weatherClass ? ` app-weather-${weatherClass}` : ''}`}>
       <header className="header">
         <div className="header-left">
           <div className="header-logo">
             <Activity size={24} color="#3b82f6" />
           </div>
-          <div className="header-text">
-            <h1>Smart Traffic AI</h1>
-            <p>Live City Monitoring &amp; AI Prediction</p>
+          <div className="header-text" style={{ display: 'flex', alignItems: 'center' }}>
+            <h1 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 800 }}>Smart Traffic AI</h1>
           </div>
         </div>
+        <div style={{ width: '1px', height: '24px', background: 'var(--glass-border)', margin: '0 0.5rem' }}></div>
         <div className="header-right">
           {!isAppInstalled && (
             <button
@@ -90,6 +92,29 @@ function App() {
         </div>
       </header>
 
+      {/* Navigation Bar */}
+      <nav className="nav-bar" id="main-nav">
+        <div className="nav-bar-scroll">
+          {[
+            { id: 'dashboard', label: 'Dashboard', icon: <Map size={18} /> },
+            { id: 'analytics', label: 'Analytics', icon: <BarChart3 size={18} /> },
+            { id: 'alerts', label: 'Alerts', icon: <AlertCircle size={18} /> },
+            { id: 'live', label: 'Live Feed', icon: <Radio size={18} /> },
+            { id: 'history', label: 'History', icon: <Clock size={18} /> },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              id={`nav-${tab.id}`}
+              className={`nav-tab${activeTab === tab.id ? ' nav-tab-active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.icon}
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+
       <main>
         <Suspense fallback={
           <div style={{
@@ -107,7 +132,7 @@ function App() {
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Loading dashboard...</p>
           </div>
         }>
-          <Dashboard isLightTheme={isLightTheme} highGraphics={highGraphics} />
+          <Dashboard isLightTheme={isLightTheme} highGraphics={highGraphics} onWeatherChange={setWeatherClass} activeTab={activeTab} />
         </Suspense>
       </main>
 

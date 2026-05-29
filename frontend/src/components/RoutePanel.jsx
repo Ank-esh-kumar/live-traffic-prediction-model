@@ -60,7 +60,7 @@ const EXPLORE_REGIONS = {
 
 const MAX_STOPS = 5; // Maximum number of middle stops
 
-const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear, onModeChange, onOpenEmergencyAuth, isEmergencyActive }) => {
+const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear, onModeChange, onOpenEmergencyAuth, isEmergencyActive, onWeatherChange }) => {
   const { user } = useAuth();
   const [mode, setMode] = useState('route'); // 'route' or 'area'
   const [waypoints, setWaypoints] = useState(["", ""]);
@@ -203,8 +203,13 @@ const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear, onModeChange, onOpen
 
   const activeWeatherClass = mode === 'area' && weatherData ? getWeatherClass(weatherData.weather_code) : '';
 
+  // Notify parent about current weather class so it can animate the global background
+  React.useEffect(() => {
+    if (onWeatherChange) onWeatherChange(mode === 'area' ? activeWeatherClass : '');
+  }, [activeWeatherClass, mode]); // eslint-disable-line
+
   return (
-    <div className="glass-panel weather-container" style={{ marginBottom: '2rem' }}>
+    <div className="glass-panel weather-container" style={{ marginBottom: '2rem', flexShrink: 0 }}>
       {/* Subtle animated weather background */}
       {activeWeatherClass && <div className={`weather-bg ${activeWeatherClass}`}></div>}
       
@@ -272,51 +277,53 @@ const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear, onModeChange, onOpen
                   </div>
 
                   {/* Input row */}
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', paddingBottom: '0.5rem', paddingTop: idx === 0 ? '0' : '0' }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ display: 'block', marginBottom: '0.25rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: '500' }}>
-                        {getLabel(idx)}
-                      </label>
-                      <input
-                        list={`city-list-${idx}`}
-                        value={wp}
-                        onChange={(e) => updateWaypoint(idx, e.target.value)}
-                        placeholder={idx === 0 ? 'Type start location...' : idx === waypoints.length - 1 ? 'Type destination...' : 'Type stop (optional)...'}
-                        style={{
-                          width: '100%', padding: '0.6rem 0.75rem', borderRadius: '8px',
-                          background: 'rgba(0,0,0,0.05)', color: 'var(--text-primary)',
-                          border: `1px solid ${wp ? getIconColor(idx) + '60' : 'var(--glass-border)'}`,
-                          fontSize: '0.9rem',
-                          transition: 'border-color 0.2s ease'
-                        }}
-                      />
-                      <datalist id={`city-list-${idx}`}>
-                        {CITIES.map(city => <option key={city} value={city} />)}
-                      </datalist>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.5rem', flex: 1, minWidth: 0 }}>
+                    <MapPin size={18} color={getIconColor(idx)} style={{ flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600 }}>{getLabel(idx)}</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+                          <input
+                            list={`city-list-${idx}`}
+                            value={wp}
+                            onChange={(e) => updateWaypoint(idx, e.target.value)}
+                            placeholder={idx === 0 ? 'Type start location...' : idx === waypoints.length - 1 ? 'Type destination...' : 'Type stop (optional)...'}
+                            style={{
+                              width: '100%', padding: '0.6rem 0.75rem', borderRadius: '8px',
+                              background: 'rgba(0,0,0,0.05)', color: 'var(--text-primary)',
+                              border: `1px solid ${wp ? getIconColor(idx) + '60' : 'var(--glass-border)'}`,
+                              fontSize: '0.9rem',
+                              transition: 'border-color 0.2s ease'
+                            }}
+                          />
+                          <datalist id={`city-list-${idx}`}>
+                            {CITIES.map(city => <option key={city} value={city} />)}
+                          </datalist>
+                        </div>
+                        {/* Remove button for middle stops only */}
+                        {idx > 0 && idx < waypoints.length - 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeStop(idx)}
+                            title="Remove this stop"
+                            style={{
+                              background: 'rgba(239, 68, 68, 0.15)',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              borderRadius: '8px',
+                              color: '#ef4444',
+                              cursor: 'pointer',
+                              padding: '0.5rem',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              transition: 'all 0.2s ease'
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.3)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'; }}
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    {/* Remove button for middle stops only */}
-                    {idx > 0 && idx < waypoints.length - 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeStop(idx)}
-                        title="Remove this stop"
-                        style={{
-                          background: 'rgba(239, 68, 68, 0.15)',
-                          border: '1px solid rgba(239, 68, 68, 0.3)',
-                          borderRadius: '8px',
-                          color: '#ef4444',
-                          cursor: 'pointer',
-                          padding: '0.5rem',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          marginTop: '1.25rem',
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.3)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'; }}
-                      >
-                        <X size={16} />
-                      </button>
-                    )}
                   </div>
                 </div>
               ))}
@@ -342,6 +349,17 @@ const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear, onModeChange, onOpen
                 <Plus size={16} />
                 Add Stop {middleStopCount > 0 && `(${middleStopCount}/${MAX_STOPS})`}
               </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+              <button type="button" onClick={() => { setWaypoints(["", ""]); if(onClear) onClear(); }} style={{
+                padding: '0.6rem 1.2rem', borderRadius: '8px',
+                background: 'rgba(255, 255, 255, 0.1)', color: 'var(--text-primary)',
+                border: '1px solid var(--glass-border)', cursor: 'pointer',
+                fontSize: '0.9rem', fontWeight: 500, flex: 1, minWidth: '100px'
+              }}>
+                Clear
+              </button>
 
               <button type="submit" style={{
                 padding: '0.6rem 1.5rem', borderRadius: '8px',
@@ -349,7 +367,7 @@ const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear, onModeChange, onOpen
                 color: '#fff',
                 border: 'none', cursor: 'pointer', fontWeight: 'bold',
                 fontSize: '0.9rem',
-                marginLeft: 'auto',
+                flex: 2, minWidth: '150px',
                 transition: 'background 0.3s'
               }}>
                 {isEmergency ? 'Start Emergency Service' : 'Find Optimal Route'}
@@ -357,8 +375,8 @@ const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear, onModeChange, onOpen
             </div>
 
             {/* Advanced Routing Options */}
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
-               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: routingMode === 'eco' ? '#22c55e' : 'var(--text-primary)', transition: 'color 0.3s' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '1rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
+               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: routingMode === 'eco' ? '#22c55e' : 'var(--text-primary)', transition: 'color 0.3s', flexShrink: 0 }}>
                  <input type="checkbox" checked={routingMode === 'eco'} onChange={(e) => {
                    const newMode = e.target.checked ? 'eco' : 'fast';
                    setRoutingMode(newMode);
@@ -370,7 +388,7 @@ const RoutePanel = ({ onRouteSelect, onAreaSelect, onClear, onModeChange, onOpen
                  Eco-Route (Save Fuel)
                </label>
                
-               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: (user?.emergency_auth?.authorized) ? 'pointer' : 'not-allowed', fontSize: '0.9rem', color: isEmergency ? '#ef4444' : (user?.emergency_auth?.authorized ? 'var(--text-primary)' : 'var(--text-secondary)'), transition: 'color 0.3s', opacity: user?.emergency_auth?.authorized ? 1 : 0.6 }}>
                    <input 
                      type="checkbox" 

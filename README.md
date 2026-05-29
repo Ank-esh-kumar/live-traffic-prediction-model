@@ -2,11 +2,11 @@
 
 **AI-Driven Traffic Prediction, Emergency Priority Routing, and Regional Exploration.**
 
-[![Version](https://img.shields.io/badge/version-1.2.0-blue)](./RELEASE_NOTES.md)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue)](./RELEASE_NOTES.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## 🆕 Latest Update (v1.2.0)
-Check out the [Release Notes](./RELEASE_NOTES.md) for full details on the new **Hospital/Police Infrastructure Expansion** and **High-Precision AI Routing**.
+## 🆕 Latest Update (v1.4.0)
+Check out the [Release Notes](./RELEASE_NOTES.md) for full details on the new **Mobile UX Refinements** and **Map Immersion Features**.
 
 ## 🌟 Key Features
 - **Real-time Prediction:** Graph Neural Networks (GNN) and LSTMs for 95%+ accurate traffic forecasting.

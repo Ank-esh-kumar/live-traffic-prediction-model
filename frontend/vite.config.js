@@ -33,27 +33,14 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         runtimeCaching: [
           {
-            // Cache Leaflet map tiles
-            urlPattern: /^https:\/\/[abc]\.basemaps\.cartocdn\.com\/.*/i,
+            // Cache TomTom map tiles
+            urlPattern: /^https:\/\/api\.tomtom\.com\/map\/.*/i,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'map-tiles',
+              cacheName: 'tomtom-map-tiles',
               expiration: {
                 maxEntries: 500,
                 maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
-              },
-              cacheableResponse: { statuses: [0, 200] }
-            }
-          },
-          {
-            // Cache OpenStreetMap tiles
-            urlPattern: /^https:\/\/[abc]\.tile\.openstreetmap\.org\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'osm-tiles',
-              expiration: {
-                maxEntries: 500,
-                maxAgeSeconds: 60 * 60 * 24 * 30
               },
               cacheableResponse: { statuses: [0, 200] }
             }
